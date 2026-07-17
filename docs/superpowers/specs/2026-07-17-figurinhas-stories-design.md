@@ -82,7 +82,7 @@ Este schema é o mesmo que um servidor serviria no futuro — o campo `version` 
 
 ### Pipeline de conteúdo
 
-Pasta `Content/` no projeto: `manifest.json` + um diretório de PNGs por pacote. Adicionar pacote = soltar PNGs + editar o JSON + submeter update do app. Um **script de validação roda como build phase** e falha o build se: arquivo referenciado não existe, `id` duplicado, PNG sem canal alfa, ou arquivo acima do limite de tamanho. Especificação das figurinhas: PNG com fundo transparente, ~1024 px no lado maior.
+Pasta `Content/` no projeto: `manifest.json` + um diretório de PNGs por pacote. Adicionar pacote = soltar PNGs + editar o JSON + submeter update do app. Um **script de validação roda como build phase** e falha o build se: arquivo referenciado não existe, `id` duplicado, PNG sem canal alfa, arquivo acima de 2 MB, ou lado maior fora da faixa 512–2048 px. Especificação recomendada das figurinhas: PNG com fundo transparente, 1024 px no lado maior.
 
 ### Estrutura de diretórios
 

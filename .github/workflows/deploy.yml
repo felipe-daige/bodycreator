@@ -1,0 +1,107 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Evita dois deploys simultâneos pisando um no outro no mesmo VPS.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      repo: ${{ steps.repo.outputs.lower }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # GHCR exige nome de repositório em minúsculas; github.repository
+      # preserva a caixa do repositório no GitHub.
+      - name: Nome do repositório em minúsculas
+        id: repo
+        run: echo "lower=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build e push da imagem da API
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/Dockerfile.api
+          push: true
+          tags: |
+            ghcr.io/${{ steps.repo.outputs.lower }}/api:latest
+            ghcr.io/${{ steps.repo.outputs.lower }}/api:${{ github.sha }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+
+      - name: Build e push da imagem do painel
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/Dockerfile.admin
+          push: true
+          # Painel e API no mesmo domínio, API sob /api — ver infra/Caddyfile.
+          build-args: |
+            VITE_API_URL=/api
+          tags: |
+            ghcr.io/${{ steps.repo.outputs.lower }}/admin:latest
+            ghcr.io/${{ steps.repo.outputs.lower }}/admin:${{ github.sha }}
+          cache-from: type=gha,scope=admin
+          cache-to: type=gha,mode=max,scope=admin
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Mantém docker-compose.yml e Caddyfile do servidor em sincronia com o
+      # que está no repo, para que mudanças de infra (ex.: um novo volume, um
+      # ajuste no Caddyfile) cheguem ao VPS sem passo manual.
+      - name: Copia docker-compose.yml e Caddyfile para o servidor
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "infra/docker-compose.yml,infra/Caddyfile"
+          target: "/opt/bodycreator/"
+          strip_components: 1
+
+      # Ordem obrigatória: pull -> migração -> up -d. Subir a API nova antes
+      # de migrar abriria uma janela em que o código novo fala com o esquema
+      # velho. `set -e` faz o script parar (e o job falhar) se a migração
+      # falhar, então `up -d` nunca roda com uma migração pendente/quebrada —
+      # a versão antiga continua no ar até alguém investigar.
+      - name: Migra e reimplanta no VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -euo pipefail
+            cd /opt/bodycreator
+            docker compose pull
+            docker compose run --rm api node dist/db/migrate.js
+            docker compose up -d
+            # O Caddyfile é um bind mount lido só na inicialização do Caddy;
+            # se ele mudou, só `up -d` não faz o Caddy reler. Reiniciar aqui
+            # é barato (~1s de indisponibilidade) e garante que a config nova
+            # sempre vale, mesmo quando só o Caddyfile mudou.
+            docker compose restart caddy
+            docker image prune -f
+            docker compose ps

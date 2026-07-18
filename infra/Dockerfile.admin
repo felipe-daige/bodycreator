@@ -1,0 +1,23 @@
+# Build de produção do painel (admin/). Contexto de build é a raiz do repo
+# (docker build -f infra/Dockerfile.admin .), mesma razão do Dockerfile.api.
+#
+# VITE_API_URL é "/api" por padrão: em produção o painel e a API ficam sob o
+# mesmo domínio (Caddyfile expõe a API em /api), então o painel chama caminhos
+# relativos e não precisa saber o domínio em tempo de build.
+#
+# Vite só expõe em import.meta.env as variáveis VITE_* que estejam em
+# process.env (ou em .env) no momento do build (ver loadEnv em
+# node_modules/vite/dist/node/chunks/node.js) — por isso o ARG é convertido
+# para ENV antes do `npm run build`. Um ARG sozinho não é visível para o
+# processo do `npm run build`; só ENV é.
+FROM node:22-slim AS build
+WORKDIR /app
+COPY admin/package*.json ./
+RUN npm ci
+COPY admin/ ./
+ARG VITE_API_URL=/api
+ENV VITE_API_URL=$VITE_API_URL
+RUN npm run build
+
+FROM caddy:2-alpine
+COPY --from=build /app/dist /srv

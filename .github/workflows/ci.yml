@@ -1,0 +1,47 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: bodycreator
+          POSTGRES_PASSWORD: bodycreator
+          POSTGRES_DB: bodycreator_test
+        ports: ["55432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: server/package-lock.json }
+      - run: npm ci
+        working-directory: server
+      - run: npm run build
+        working-directory: server
+      - run: npm test
+        working-directory: server
+        env:
+          TEST_DATABASE_URL: postgres://bodycreator:bodycreator@localhost:55432/bodycreator_test
+
+  # O painel não tem testes automatizados ainda, mas precisa compilar sem
+  # erro — é a mesma etapa que infra/Dockerfile.admin roda para gerar a
+  # imagem de produção. Falhar aqui, no push, é bem mais barato que só
+  # descobrir um erro de tipo quando o deploy.yml tenta construir a imagem.
+  admin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: admin/package-lock.json }
+      - run: npm ci
+        working-directory: admin
+      - run: npm run lint
+        working-directory: admin
+      - run: npm run build
+        working-directory: admin
+        env:
+          VITE_API_URL: /api

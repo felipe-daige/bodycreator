@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: bodycreator
+      POSTGRES_PASSWORD: bodycreator
+      POSTGRES_DB: bodycreator
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+  db-test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: bodycreator
+      POSTGRES_PASSWORD: bodycreator
+      POSTGRES_DB: bodycreator_test
+    ports: ["55432:5432"]
+    tmpfs: ["/var/lib/postgresql/data"]
+
+volumes:
+  pgdata:

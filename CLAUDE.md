@@ -4,72 +4,112 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**Body Creator** — iOS app (SwiftUI, iOS 16+, iPhone-only, portrait) that is a library of transparent PNG stickers for Instagram Stories, aimed at health/aesthetics professionals. The user picks a sticker and a patient photo; the app hands both to Instagram, which opens a story with the photo as background and the sticker as a draggable layer.
+**Body Creator** — sticker infoproduct for Instagram Stories, aimed at health/aesthetics professionals. Four subsystems in one repo:
 
-The product/design spec is `docs/superpowers/specs/2026-07-17-figurinhas-stories-design.md` (read section 5b before touching the Instagram flow). Pre-release steps live in `docs/RELEASE_CHECKLIST.md`.
+| Directory | What it is |
+|---|---|
+| `App/ Catalog/ Export/ Favorites/ UI/` | iOS app (SwiftUI, iOS 16+, iPhone-only). Picks a sticker + patient photo, hands both to Instagram. |
+| `server/` | Backend API (Fastify 5 + Drizzle/Postgres 16, TypeScript). Invites, permissions, sticker upload, versioned catalog publishing to Cloudflare R2. |
+| `admin/` | Admin panel (React + Vite). Where the owner and managers upload stickers and publish the catalog. |
+| `infra/` | Production: Docker Compose, Caddy, backup scripts. Ops runbook in `docs/OPERACAO.md` (pt-BR). |
 
-Internal names are still `Figurinhas` (target, scheme, `Figurinhas.xcodeproj`) while the product is "Body Creator" — this mismatch is deliberate, not drift.
+Specs live in `docs/superpowers/specs/`: `2026-07-17-figurinhas-stories-design.md` (iOS MVP; read §5b before touching the Instagram flow) and `2026-07-18-infoproduto-p1-backend-admin-design.md` (backend/panel; also describes future sub-projects P2 remote catalog in app, P3 IAP monetization, P4 Explore tab). Execution ledger: `.superpowers/sdd/progress.md`.
 
-## Generated files — never edit by hand
+Internal iOS names are still `Figurinhas` (target, scheme, `Figurinhas.xcodeproj`) while the product is "Body Creator" — deliberate, not drift.
 
-`project.yml` (XcodeGen) is the single source of truth. Both of these are generated from it and are gitignored:
+## Cross-cutting invariants (break these and the product breaks)
 
-- `Figurinhas.xcodeproj`
-- `App/Info.plist` — editing it directly is silently discarded on the next generate; change `targets.Figurinhas.info.properties` in `project.yml` instead.
+- **Sticker PNG bytes are never re-encoded, anywhere.** Alpha/transparency is the entire product. iOS: `UIImage(data:)` validates only. Server: `sharp` reads metadata only; the original buffer goes to R2 untouched.
+- **Sticker `id` is globally unique**, not per pack. iOS favorites store bare ids (`favoriteStickerIDs` in UserDefaults); the server enforces uniqueness with a DB primary key on `stickers.id` (text).
+- **The published manifest must decode with `Catalog/Models.swift`.** Same shape as `Content/manifest.json`. `StickerPack.cover` is a **non-optional** `String` — a `null` cover breaks the whole catalog decode, which is why `buildManifest` filters packs without cover and the publish route refuses them.
+- **`catalog/v{N}.json` is immutable; `catalog/current.json` is the mutable pointer.** Rollback = move the pointer. Cache rule lives in `isMutablePointer()` (`server/src/storage/r2.ts`): pointer gets 60s, everything else immutable/1y. New object keys must respect this split.
+- All user-facing text in **pt-BR** (app, API errors, panel, ops docs). Code identifiers in English.
+- No secrets in the repo — env vars only, validated at startup (`server/src/config.ts` fails the boot if one is missing).
 
-**Run `xcodegen generate` after any `project.yml` change and after adding any new file or folder** — sources are resolved into static file lists, so new files are invisible to the build until you regenerate.
-
-## Commands
+## Server (`server/`)
 
 ```bash
-xcodegen generate     # after adding files or editing project.yml
+docker compose -f infra/docker-compose.dev.yml up -d   # dev DB :5432, test DB :55432 (tmpfs)
+cd server
+npm test              # 170 tests; integration tests need the :55432 container
+npm test -- invites   # filter by file name
+npm run dev           # tsx watch, http://localhost:3000
+npm run db:generate   # after editing src/db/schema.ts — then inspect the SQL in drizzle/
+npm run seed:admin    # reads ADMIN_SEED_EMAIL / ADMIN_SEED_PASSWORD from env; idempotent, never overwrites an existing admin's password
+```
 
+Beware: a Homebrew Postgres on the host can shadow the dev container on :5432; the test container on :55432 is unaffected.
+
+### Architecture
+
+`buildApp(deps)` in `src/app.ts` is a factory that never calls `listen()` — tests inject `AppDeps = { config, db, mailer, storage }` with `createFakeMailer()` and `createMemoryStorage()`. Adding a dependency to `AppDeps` means updating every `buildApp` call in tests.
+
+Auth: signed cookie carries only the userId; **the user is re-read from the DB on every request** (`requireAuth`), so disabling an account takes effect on the next request. There is deliberately no session table. `mustChangePassword` is enforced server-side in `requireAuth` (allowlist: `/auth/me`, `/auth/change-password`, `/auth/logout`).
+
+Permissions: `role` (`admin` | `gerente`) + explicit permission list. `canDo()` (`src/auth/permissions.ts`) refuses `user.manage` for gerente **even if the string is in the DB** — defense at read time. `pack.price` and `report.view` exist but are inert until P3. No public signup: invite-only (32-byte token, stored hashed, single-use, 7 days).
+
+Audit: `recordAudit()` recursively strips password/token fields from payloads before writing.
+
+### Test conventions
+
+- Every protected route gets negative-path tests: **403 (logged in, missing permission) and 401 (no session) are distinct cases**.
+- Helpers in `tests/setup/app.ts` (`criarELogar`, `criarPackComCategoria`, `criarPackPublicavel`) and `tests/setup/db.ts` (`withTestDb` — migrates once, truncates between cases). Reuse them.
+- Nothing talks to real R2 or sends real e-mail — thin `Storage`/`Mailer` interfaces with in-memory fakes; the real implementations are verified manually in staging.
+
+## Admin panel (`admin/`)
+
+```bash
+cd admin && npm run dev    # :5173, expects API on :3000
+npm run build              # VITE_API_URL=/api in production builds (Caddy serves both on one domain)
+```
+
+- All HTTP goes through `apiFetch` (`src/api.ts`) — it embeds `credentials: 'include'` and surfaces the server's pt-BR `{ error }` message. Never call `fetch` directly; show the server's message instead of a generic one.
+- `can()` in `src/auth.tsx` only hides useless controls. **Authorization is the server's** — every hidden control must map to a route the server actually refuses.
+- No `localStorage` for anything auth-related; the session cookie is httpOnly.
+
+## Infra (`infra/`)
+
+- Panel and API share one domain; Caddy strips `/api` before proxying. This keeps the session cookie same-site — don't split into two domains.
+- Deploy order is fixed: `pull` → migrate → `up -d`. Migrating after the new API is up creates a window of new code against old schema.
+- `backup.sh` / `restore-check.sh` run on the VPS (GNU tools, not macOS). The restore check actually restores into a disposable container and counts tables **and** users — keep both checks.
+- Fastify runs with `trustProxy: true` because it is only reachable through Caddy (no published ports on the api container). Login rate limit is per-IP *and* per-email (in-memory map, resets on restart — by design).
+
+## iOS app
+
+### Generated files — never edit by hand
+
+`project.yml` (XcodeGen) is the single source of truth. Both are generated and gitignored: `Figurinhas.xcodeproj` and `App/Info.plist` (hand edits are silently discarded; change `targets.Figurinhas.info.properties` in `project.yml`). **Run `xcodegen generate` after any `project.yml` change and after adding any file** — sources are static lists.
+
+### Commands
+
+```bash
+xcodegen generate
 DEST="platform=iOS Simulator,name=iPhone 17 Pro"
 xcodebuild test  -project Figurinhas.xcodeproj -scheme Figurinhas -destination "$DEST"
-xcodebuild build -project Figurinhas.xcodeproj -scheme Figurinhas -destination "$DEST"
-
-# single test / single class
 xcodebuild test -project Figurinhas.xcodeproj -scheme Figurinhas -destination "$DEST" \
   -only-testing:FigurinhasTests/CatalogStoreTests/testSearchIgnoresCaseAndAccents
-
-python3 Scripts/validate_content.py Content   # same check the build runs
-swift Scripts/generate_placeholders.swift Content   # regenerate placeholder stickers
-swift Scripts/generate_appicon.swift                # regenerate placeholder icon
+python3 Scripts/validate_content.py Content     # same check the build runs (server port: src/content/validatePng.ts)
+swift Scripts/generate_placeholders.swift Content
 ```
 
 `-quiet` suppresses the `** TEST SUCCEEDED **` banner on this toolchain — judge by exit code, or drop the flag.
 
-Two test targets run under one scheme: `FigurinhasTests` (unit) and `FigurinhasUITests` (one end-to-end flow).
+### Architecture
 
-## Architecture
+Four modules, one-way dependencies: **UI → {Catalog, Favorites, Export}**. `CatalogStore` is the only thing that knows where content comes from — the P2 bundle→server swap happens there alone. It drops stickers with missing files and prunes empty categories (the server-side `buildManifest` mirrors this pruning at the source).
 
-Four modules with one-way dependencies: **UI → {Catalog, Favorites, Export}**.
-
-- **Catalog** — `ManifestLoader` reads `Content/manifest.json`; `CatalogStore` (`@MainActor ObservableObject`) exposes packs to the UI. It is the only thing that knows where content comes from: swapping bundle→server later happens here alone. It drops stickers whose file is missing and prunes categories left empty, so a bad manifest degrades to an empty catalog instead of crashing.
-- **Favorites** — sticker ids in `UserDefaults` under `favoriteStickerIDs`.
-- **Export** — `StickerExporter` (Instagram + pasteboard), `InstagramSharing` (Facebook App ID).
-- **UI** — the four screens; stores arrive via `@EnvironmentObject`, injected once in `FigurinhasApp`.
-
-### Content pipeline
-
-`Content/` holds `manifest.json` plus one folder of PNGs per pack, copied into the bundle as a folder reference. Adding stickers = drop PNGs + edit the JSON. `Scripts/validate_content.py` runs as a **pre-build phase and fails the build** on: missing file, duplicate id, PNG without alpha, >2 MB, or longest side outside 512–2048 px. Sticker ids must be unique **globally**, not per pack — favorites are stored as bare ids.
+`Content/` is bundle content: `manifest.json` + PNG folders, validated by a **pre-build phase that fails the build** on: missing file, duplicate id, PNG without alpha, >2 MB, longest side outside 512–2048 px. The server upload enforces the identical rules.
 
 ### Instagram integration (the core mechanic)
 
-`shareToInstagramStories` puts `com.instagram.sharedSticker.backgroundImage` (the chosen photo, JPEG) and `com.instagram.sharedSticker.stickerImage` (the sticker PNG) on the pasteboard, then opens `instagram-stories://share?source_application=<FacebookAppID>`.
+`shareToInstagramStories` puts `com.instagram.sharedSticker.backgroundImage` (photo, JPEG) + `com.instagram.sharedSticker.stickerImage` (sticker PNG) on the pasteboard, then opens `instagram-stories://share?source_application=<FacebookAppID>`.
 
-Constraints that are easy to get wrong:
+- **Facebook App ID is mandatory** (Meta, since Jan 2023) — `Export/InstagramSharing.swift`. The App ID is public by design; the App Secret never enters the repo.
+- The API **always creates a new story**; nothing can inject a sticker into a composition already open in Instagram. "Só copiar a figurinha" + long-press paste is the deliberate answer, and the only route for multiple stickers.
+- Check `AVCaptureDevice.authorizationStatus` **before** presenting `CameraPicker` — `UIImagePickerController` renders black when denied instead of failing.
 
-- **The sticker PNG's bytes must reach the pasteboard unchanged.** Re-encoding through `UIImage` can drop the alpha channel, which breaks the whole product. `UIImage(data:)` is used only to validate, never to re-encode.
-- A **Facebook App ID is mandatory** (Meta requirement since Jan 2023) — in `Export/InstagramSharing.swift`. Empty ⇒ `.missingFacebookAppID`.
-- This API **always creates a new story**. There is no way to inject a sticker into a composition already open in Instagram, and a photo taken inside Instagram is unreachable from other apps. The "Só copiar a figurinha" button (PNG on the pasteboard, pasted by long-press) is the deliberate answer to both cases, and the only route for multiple stickers on one image.
-- Camera: check `AVCaptureDevice.authorizationStatus` **before** presenting `CameraPicker` — `UIImagePickerController` renders a black screen when access is denied instead of failing.
+### iOS conventions
 
-## Conventions
-
-- All user-facing text in **pt-BR**.
-- iOS 16.0 floor — no iOS 17+ API (e.g. `ContentUnavailableView`, two-parameter `onChange`).
-- The app links Apple frameworks only; no package dependencies.
-- UI elements the end-to-end test drives carry `accessibilityIdentifier`s (`sticker-<id>`, `take-photo`, `copy-only`, …) — keep them in sync with `UITests/BodyCreatorUITests.swift`.
-- SwiftUI's `confirmationDialog` cancel button is not exposed to XCUITest; avoid asserting on it.
-- The app collects no data and stores no photos (the photo goes only to the local pasteboard) — keep the "Data Not Collected" privacy label and `App/PrivacyInfo.xcprivacy` (UserDefaults, reason CA92.1) true as the code changes.
+- iOS 16.0 floor — no iOS 17+ API (`ContentUnavailableView`, two-parameter `onChange`). Apple frameworks only.
+- UI elements the end-to-end test drives carry `accessibilityIdentifier`s (`sticker-<id>`, `take-photo`, `copy-only`, …) — keep in sync with `UITests/BodyCreatorUITests.swift`. SwiftUI `confirmationDialog` cancel is invisible to XCUITest.
+- The app collects no data ("Data Not Collected" label, `App/PrivacyInfo.xcprivacy` CA92.1) — keep that true as code changes; P3 (IAP) is when this gets revisited.

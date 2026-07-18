@@ -25,19 +25,32 @@ struct PackGridView: View {
                 }
                 .padding(.horizontal)
             }
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3),
-                      spacing: 12) {
-                ForEach(visibleStickers) { sticker in
-                    Button {
-                        selectedSticker = sticker
-                    } label: {
-                        StickerCell(sticker: sticker, imageURL: catalog.imageURL(for: sticker))
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("sticker-\(sticker.id)")
+            if visibleStickers.isEmpty {
+                VStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.largeTitle)
+                        .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
+                    Text("Nenhuma figurinha encontrada")
+                        .foregroundStyle(.secondary)
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.top, 64)
+            } else {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 3),
+                          spacing: 12) {
+                    ForEach(visibleStickers) { sticker in
+                        Button {
+                            selectedSticker = sticker
+                        } label: {
+                            StickerCell(sticker: sticker, imageURL: catalog.imageURL(for: sticker))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("sticker-\(sticker.id)")
+                    }
+                }
+                .padding()
             }
-            .padding()
         }
         .searchable(text: $query, prompt: "Buscar figurinha")
         .navigationTitle(pack.name)

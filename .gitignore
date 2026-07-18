@@ -3,3 +3,5 @@ DerivedData/
 build/
 *.xcodeproj
 xcuserdata/
+# Gerado pelo XcodeGen a partir de project.yml (info.properties) — project.yml é a fonte de verdade
+App/Info.plist

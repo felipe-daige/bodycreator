@@ -24,6 +24,10 @@ targets:
       - path: Content
         type: folder
         buildPhase: resources
+    preBuildScripts:
+      - name: Validate Content
+        script: /usr/bin/python3 "$SRCROOT/Scripts/validate_content.py" "$SRCROOT/Content"
+        basedOnDependencyAnalysis: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.daige.figurinhas

@@ -17,7 +17,7 @@ const config = loadConfig({
 
 describe('GET /health', () => {
   it('responde 200 com status ok', async () => {
-    const app = buildApp({ config });
+    const app = buildApp({ config, db: {} as never });
     const res = await app.inject({ method: 'GET', url: '/health' });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ status: 'ok' });

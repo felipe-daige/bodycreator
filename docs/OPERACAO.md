@@ -260,48 +260,143 @@ curl -s https://<domínio>/api/health   # healthcheck público
 
 ## Backup e restauração
 
-### Backup
+Dois scripts em `infra/`, pensados para rodar só no VPS (Linux/Ubuntu) via cron:
 
-Dump lógico do Postgres, direto do container, para um arquivo no host:
+- **`infra/backup.sh`** — todo dia, faz `pg_dump` do Postgres de produção, comprime,
+  sobe para `backups/` no bucket do R2 e apaga do R2 backups com mais de 30 dias.
+  Aborta (`exit 1`) se o dump sair com menos de 1 KB — um dump vazio ou truncado é
+  falha silenciosa, e é melhor descobrir isso no log do cron do dia do que na hora
+  de precisar restaurar de verdade.
+- **`infra/restore-check.sh`** — uma vez por mês, baixa o backup mais recente do R2,
+  restaura num container Postgres **descartável** (isolado, nunca toca no banco de
+  produção) e verifica **duas** coisas: que o esquema restaurado tem pelo menos 7
+  tabelas e que a tabela `users` tem pelo menos 1 registro. As duas checagens são
+  deliberadas — um dump que restaura o esquema mas perdeu os dados passaria numa
+  checagem que só olha tabelas. O container é sempre removido ao final (`trap` no
+  `EXIT`), inclusive quando a verificação falha, para o run do mês seguinte não
+  colidir com um container de nome igual ainda vivo.
+
+Um backup que roda mas nunca foi restaurado com sucesso nem uma vez não é um
+backup, é uma esperança. `restore-check.sh` é o que transforma essa esperança em
+fato verificado, todo mês, automaticamente.
+
+### Instalar o AWS CLI no VPS
+
+Os dois scripts usam `aws s3` para falar com o R2 (compatível com a API S3). O AWS
+CLI **não é dependência do repositório** — é dependência de operação do VPS, então
+não entra em nenhum `Dockerfile` nem `package.json`; instala-se uma vez no servidor:
 
 ```bash
-cd /opt/bodycreator
-source .env
-docker compose exec -T db pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" \
-  > "backup-$(date +%F).sql"
+curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
+# em VPS arm64, troque x86_64 por aarch64 na URL acima
+unzip awscliv2.zip
+sudo ./aws/install
+aws --version
+rm -rf awscliv2.zip aws/
 ```
 
-Recomendado: agendar isto num `cron` do usuário `deploy` (`crontab -e`) e copiar o
-arquivo resultante para fora do VPS (outro servidor, object storage) — um backup
-que só existe no mesmo disco que pode falhar não protege contra perda do VPS.
-Isso não está automatizado neste task; fica como melhoria futura.
+Não é preciso rodar `aws configure`: os dois scripts exportam
+`AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` a partir de `R2_ACCESS_KEY_ID`/
+`R2_SECRET_ACCESS_KEY`, que já estão no `.env` de produção (Task 10) — não faz
+sentido manter a mesma credencial duplicada num `~/.aws/credentials` à parte, que
+ninguém lembraria de atualizar junto numa rotação de chave.
 
-### Restauração
+(Optou-se por AWS CLI em vez de `rclone`: o R2 é compatível com a API S3 e os
+comandos `aws s3 cp/ls/rm` já são os documentados oficialmente pela Cloudflare para
+esse cenário; usar `rclone` introduziria uma segunda ferramenta com seu próprio
+formato de configuração para o mesmo trabalho que o `aws s3` já resolve.)
 
-**Destrutivo** — apaga o conteúdo atual do banco antes de restaurar. Confirme que
-tem o arquivo de backup certo antes de rodar.
+### Agendar
+
+```bash
+sudo chmod +x /opt/bodycreator/infra/backup.sh /opt/bodycreator/infra/restore-check.sh
+sudo crontab -e
+```
+
+```cron
+15 4 * * *  /opt/bodycreator/infra/backup.sh        >> /var/log/bodycreator-backup.log 2>&1
+30 5 1 * *  /opt/bodycreator/infra/restore-check.sh >> /var/log/bodycreator-restore.log 2>&1
+```
+
+Backup todo dia às 4h15 UTC; verificação de restauração no dia 1 de cada mês às
+5h30 UTC (depois do backup do dia ter concluído).
+
+### Rodar os dois pela primeira vez, à mão
+
+Depois de agendar, rode os dois manualmente uma vez — um plano que só agenda o
+backup e nunca o roda entrega uma promessa não verificada:
+
+```bash
+/opt/bodycreator/infra/backup.sh
+/opt/bodycreator/infra/restore-check.sh
+```
+
+Saída esperada: `Backup concluído: bodycreator-…` e `OK: restauração verificada —
+7 tabelas, N usuários.` Qualquer outra saída (ou código de saída diferente de 0) é
+falha — confira `docker compose logs`, credenciais do R2 no `.env` e se o AWS CLI
+está instalado.
+
+### Restauração manual (desastre real, no banco de produção)
+
+Diferente do `restore-check.sh` (que só valida num container descartável), isto
+**restaura de fato** o banco de produção. **Destrutivo** — apaga o conteúdo atual
+antes de restaurar. Confirme que tem o arquivo certo antes de rodar.
 
 ```bash
 cd /opt/bodycreator
 source .env
+export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" AWS_DEFAULT_REGION=auto
 
-# 1. Para a API para não escrever durante a restauração
+# 1. Baixa o backup desejado do R2 (troque pelo nome do arquivo certo —
+#    `aws s3 ls` lista o que existe em backups/)
+aws s3 cp "s3://${R2_BUCKET}/backups/bodycreator-AAAAMMDDTHHMMSSZ.sql.gz" /tmp/restore.sql.gz \
+  --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+# 2. Para a API para não escrever durante a restauração
 docker compose stop api
 
-# 2. Limpa o schema atual
+# 3. Limpa o schema atual
 docker compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
   -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 
-# 3. Restaura o dump
-cat backup-AAAA-MM-DD.sql | docker compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+# 4. Restaura o dump
+gunzip -c /tmp/restore.sql.gz | docker compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
 
-# 4. Sobe a API de novo
+# 5. Sobe a API de novo
 docker compose start api
+rm -f /tmp/restore.sql.gz
 ```
 
 Se o backup for de uma versão do schema anterior à atual, rode a migração
-(`docker compose run --rm api node dist/db/migrate.js`) depois do passo 3, antes
-do passo 4.
+(`docker compose run --rm api node dist/db/migrate.js`) depois do passo 4, antes
+do passo 5.
+
+### Recuperação de desastre: VPS morto → VPS novo
+
+Cenário: o VPS de produção sumiu (disco corrompido, provedor perdeu a instância,
+etc.) e é preciso reconstruir tudo num servidor novo, sem perder dados além do que
+ficou de fora do backup do dia.
+
+1. Siga a seção **"Provisionamento do zero"** deste documento, do passo 1 ao passo
+   8 — isso deixa um VPS novo com Docker, `/opt/bodycreator`, `.env` preenchido
+   (**as mesmas credenciais de R2 do servidor antigo** — elas não se perdem junto
+   com o VPS, moram no provedor de object storage) e a API/painel no ar com um
+   banco **vazio**.
+2. Instale o AWS CLI no servidor novo (seção acima).
+3. Restaure o backup mais recente do R2 seguindo **"Restauração manual"** acima —
+   os passos 2 a 5 (a API já vai estar rodando do passo 1, então o passo "para a
+   API" se aplica normalmente).
+4. Rode `restore-check.sh` uma vez à mão para confirmar, de forma independente da
+   restauração que acabou de fazer, que o banco novo tem o formato esperado.
+5. Confirme login no painel com um usuário que existia antes do desastre — é a
+   prova final de que os dados voltaram, não só o esquema.
+6. Reagende o cron (seção "Agendar" acima) no servidor novo — ele não veio junto
+   na reconstrução do zero.
+
+Perda de dados nesse cenário fica limitada ao intervalo entre o último backup
+diário (4h15 UTC) e o momento do desastre — na pior hipótese, até 24h de dados.
+Reduzir essa janela (backups mais frequentes, WAL archiving contínuo) fica como
+melhoria futura; fora do escopo deste task.
 
 ---
 
@@ -349,3 +444,11 @@ novo:
     -e ADMIN_SEED_PASSWORD=... api node dist/seed-admin.js`).
 11. Cadastrar o monitor de uptime externo (seção acima) — pendência para o dono
     do projeto.
+12. Agendar `infra/backup.sh` e `infra/restore-check.sh` no cron (seção "Backup e
+    restauração" acima) e rodar os dois uma vez à mão.
+
+Este checklist parte de um banco **vazio** (VPS novo, sem dados anteriores). Se o
+objetivo é recuperar um VPS que caiu **com** dados que precisam voltar, siga
+"Recuperação de desastre: VPS morto → VPS novo" na seção "Backup e restauração"
+em vez deste checklist genérico — ele reaproveita os passos 1 a 9 daqui e insere a
+restauração do backup antes de considerar o ambiente pronto.

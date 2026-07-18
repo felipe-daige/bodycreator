@@ -127,7 +127,7 @@ O app iOS (`App/`, `Catalog/`, `Export/`, `Favorites/`, `UI/`) **não é tocado 
     "@fastify/cors": "^10.0.1",
     "@fastify/rate-limit": "^10.2.1",
     "@fastify/multipart": "^9.0.1",
-    "drizzle-orm": "^0.38.0",
+    "drizzle-orm": "^0.45.2",
     "postgres": "^3.4.5",
     "zod": "^3.24.1",
     "@node-rs/argon2": "^2.0.2",
@@ -139,7 +139,7 @@ O app iOS (`App/`, `Catalog/`, `Export/`, `Favorites/`, `UI/`) **não é tocado 
     "typescript": "^5.7.2",
     "tsx": "^4.19.2",
     "vitest": "^2.1.8",
-    "drizzle-kit": "^0.30.1",
+    "drizzle-kit": "^0.31.10",
     "@types/node": "^22.10.2"
   }
 }
@@ -2431,8 +2431,12 @@ export function createR2Storage(config: Config): Storage {
     async put(key, body, contentType) {
       await client.send(new PutObjectCommand({
         Bucket: config.R2_BUCKET, Key: key, Body: body, ContentType: contentType,
-        // Manifesto é imutável por versão, então pode ficar em cache para sempre.
-        CacheControl: key.startsWith('catalog/') ? 'public, max-age=31536000, immutable' : 'public, max-age=31536000',
+        // Manifesto versionado e figurinha são imutáveis: cache eterno.
+        // O ponteiro catalog/current.json MUDA a cada publicação — cache curto,
+        // senão publicar catálogo novo nunca chega ao app.
+        CacheControl: isMutablePointer(key)
+          ? 'public, max-age=60, must-revalidate'
+          : 'public, max-age=31536000, immutable',
       }));
     },
     async get(key) {

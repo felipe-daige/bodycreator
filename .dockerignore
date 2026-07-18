@@ -1,0 +1,49 @@
+# Aplica-se aos builds de infra/Dockerfile.api e infra/Dockerfile.admin, cujo
+# contexto é a raiz do repo (docker build -f infra/Dockerfile.* .).
+#
+# Sem isto, `COPY server/ ./` e `COPY admin/ ./` copiariam o node_modules e o
+# dist já instalados/buildados localmente (sobrescrevendo o que `npm ci`
+# acabou de instalar dentro da imagem) e, se algum dia existir, um .env real
+# com segredos.
+
+.git
+.gitignore
+
+# Segredos — nunca devem entrar no contexto de build de uma imagem
+.env
+.env.*
+!.env.example
+server/.env
+server/.env.*
+!server/.env.example
+admin/.env
+admin/.env.*
+
+# Instalados/gerados localmente — reconstruídos dentro da imagem
+node_modules
+**/node_modules
+server/dist
+admin/dist
+server/tests
+admin/README.md
+
+# App iOS — fora do escopo das imagens de servidor/painel
+App
+Catalog
+Export
+Favorites
+UI
+Content
+Scripts
+Tests
+UITests
+*.xcodeproj
+project.yml
+
+# Metadados de projeto/documentação — não usados dentro da imagem
+docs
+.superpowers
+.claude
+
+# SO
+.DS_Store

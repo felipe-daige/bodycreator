@@ -6,3 +6,6 @@ xcuserdata/
 # Gerado pelo XcodeGen a partir de project.yml (info.properties) — project.yml é a fonte de verdade
 App/Info.plist
 .superpowers/brainstorm/
+
+# Segredos de produção — só existem no VPS, nunca no repo
+infra/.env

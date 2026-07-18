@@ -1,0 +1,63 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      retries: 5
+
+  api:
+    image: ghcr.io/${GH_REPO}/api:${TAG:-latest}
+    restart: unless-stopped
+    env_file: [.env]
+    depends_on:
+      db: { condition: service_healthy }
+
+  # Container de inicialização: copia os estáticos do painel (já compilados
+  # dentro da própria imagem, em /srv — ver Dockerfile.admin) para o volume
+  # admin_dist e ENCERRA (restart: "no"). Não fica um processo ocioso rodando
+  # à toa — o container fica "Exited (0)" depois de copiar, o que também
+  # funciona como sinal de sucesso para o depends_on do Caddy abaixo.
+  #
+  # Um `docker compose up -d` repetido é seguro: se a imagem/tag do admin não
+  # mudou, o Compose só reinicia um container já-parado (a cópia roda de novo,
+  # idempotente); se mudou (novo deploy), o Compose recria o container com a
+  # imagem nova, ele copia os estáticos novos para o MESMO volume, e o Caddy
+  # (que já está rodando, montando o volume) passa a servir os arquivos novos
+  # sem precisar ser reiniciado — o file_server lê do disco a cada request.
+  admin:
+    image: ghcr.io/${GH_REPO}/admin:${TAG:-latest}
+    restart: "no"
+    volumes: ["admin_dist:/out"]
+    command: ["sh", "-c", "cp -r /srv/. /out/"]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    # Só PANEL_DOMAIN, não env_file: [.env] inteiro — o Caddy não precisa de
+    # SESSION_SECRET, DATABASE_URL nem das chaves do R2. Passar o arquivo
+    # todo daria a esse container acesso a segredos que ele nunca usa.
+    environment:
+      PANEL_DOMAIN: ${PANEL_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - admin_dist:/srv:ro
+    depends_on:
+      api: { condition: service_started }
+      # service_completed_successfully garante que o volume admin_dist já
+      # tem conteúdo na primeira subida (compose up -d "do zero"), evitando
+      # que o Caddy sirva um /srv vazio antes da cópia terminar.
+      admin: { condition: service_completed_successfully }
+
+volumes:
+  pgdata:
+  caddy_data:
+  admin_dist:

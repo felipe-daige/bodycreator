@@ -1,0 +1,17 @@
+{$PANEL_DOMAIN} {
+	encode gzip
+
+	# API sob /api no MESMO domínio do painel — mantém o cookie de sessão
+	# same-site e evita toda a categoria de problema de cookie entre
+	# domínios. Não separe painel e API em domínios diferentes.
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy api:3000
+	}
+
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}

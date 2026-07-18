@@ -29,6 +29,7 @@ struct PacksListView: View {
                             }
                         }
                     }
+                    .accessibilityIdentifier("pack-\(pack.id)")
                 }
                 .listStyle(.insetGrouped)
             }

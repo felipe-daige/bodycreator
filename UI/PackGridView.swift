@@ -34,6 +34,7 @@ struct PackGridView: View {
                         StickerCell(sticker: sticker, imageURL: catalog.imageURL(for: sticker))
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("sticker-\(sticker.id)")
                 }
             }
             .padding()
@@ -41,6 +42,9 @@ struct PackGridView: View {
         .searchable(text: $query, prompt: "Buscar figurinha")
         .navigationTitle(pack.name)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $selectedSticker) { sticker in
+            StickerDetailSheet(sticker: sticker, imageURL: catalog.imageURL(for: sticker))
+        }
     }
 
     private func categoryChip(id: String?, label: String) -> some View {

@@ -1,5 +1,7 @@
 # Figurinhas MVP — Implementation Plan
 
+> **Atualização 2026-07-18:** nome comercial definido como **Body Creato** e bundle id atualizado para `com.daige.bodycreato`. O target interno continua se chamando `Figurinhas`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** App iOS (SwiftUI) de figurinhas para Instagram Stories: biblioteca de PNGs transparentes organizada em pacotes/categorias, com busca, favoritos e fluxo "copiar → abrir Instagram → colar".
@@ -98,13 +100,13 @@ targets:
         buildPhase: resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.daige.figurinhas
+        PRODUCT_BUNDLE_IDENTIFIER: com.daige.bodycreato
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: Figurinhas
+        CFBundleDisplayName: Body Creato
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "1"
         LSApplicationQueriesSchemes: [instagram]
@@ -1512,7 +1514,7 @@ open -a Simulator
 xcodebuild build -project Figurinhas.xcodeproj -scheme Figurinhas -destination "$DEST" -quiet
 APP=$(ls -d ~/Library/Developer/Xcode/DerivedData/Figurinhas-*/Build/Products/Debug-iphonesimulator/Figurinhas.app | head -1)
 xcrun simctl install booted "$APP"
-xcrun simctl launch booted com.daige.figurinhas
+xcrun simctl launch booted com.daige.bodycreato
 sleep 3
 xcrun simctl io booted screenshot /tmp/figurinhas-task8.png
 ```
@@ -1672,7 +1674,7 @@ Expected: `** TEST SUCCEEDED **`.
 xcodebuild build -project Figurinhas.xcodeproj -scheme Figurinhas -destination "$DEST" -quiet
 APP=$(ls -d ~/Library/Developer/Xcode/DerivedData/Figurinhas-*/Build/Products/Debug-iphonesimulator/Figurinhas.app | head -1)
 xcrun simctl install booted "$APP"
-xcrun simctl launch booted com.daige.figurinhas
+xcrun simctl launch booted com.daige.bodycreato
 ```
 
 Tocar numa figurinha: sheet sobe com preview sobre xadrez. "Copiar e abrir Instagram" no simulador (sem Instagram) deve mostrar o alerta "Instale o Instagram…" — é o caminho de erro correto. "Só copiar" mostra "Copiado! Agora é só colar onde quiser.". Favoritar alterna o coração.
@@ -1919,11 +1921,11 @@ Expected: `** TEST SUCCEEDED **`.
 Apagar o app do simulador para resetar o flag e reinstalar:
 
 ```bash
-xcrun simctl uninstall booted com.daige.figurinhas
+xcrun simctl uninstall booted com.daige.bodycreato
 xcodebuild build -project Figurinhas.xcodeproj -scheme Figurinhas -destination "$DEST" -quiet
 APP=$(ls -d ~/Library/Developer/Xcode/DerivedData/Figurinhas-*/Build/Products/Debug-iphonesimulator/Figurinhas.app | head -1)
 xcrun simctl install booted "$APP"
-xcrun simctl launch booted com.daige.figurinhas
+xcrun simctl launch booted com.daige.bodycreato
 ```
 
 Expected: onboarding aparece na primeira abertura; "Próximo" ×2 → "Começar" fecha; relançar o app não mostra onboarding de novo.
@@ -2064,7 +2066,7 @@ Expected: `** BUILD SUCCEEDED **`.
 `docs/RELEASE_CHECKLIST.md`:
 
 ```markdown
-# Checklist de release — Figurinhas
+# Checklist de release — Body Creato
 
 ## Antes de TODO envio à App Store
 - [ ] `python3 Scripts/validate_content.py Content` → OK
@@ -2079,7 +2081,7 @@ Expected: `** BUILD SUCCEEDED **`.
 ## Somente no primeiro envio (trocar placeholders)
 - [ ] Substituir `Content/packs/exemplo` pelas artes finais (rodar o validador)
 - [ ] Substituir ícone placeholder (`App/Assets.xcassets/AppIcon.appiconset/AppIcon.png`, 1024×1024 sem alfa)
-- [ ] Definir nome comercial: `CFBundleDisplayName` no project.yml + nome na App Store Connect
+- [ ] Confirmar o nome comercial Body Creato no App Store Connect
 - [ ] Definir bundle id definitivo (`PRODUCT_BUNDLE_IDENTIFIER`) e time de assinatura (conta Apple Developer)
 - [ ] App Store Connect: privacy label = "Data Not Collected" (o app não coleta nada)
 - [ ] Screenshots para a ficha (iPhone 6.7" e 6.1")

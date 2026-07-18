@@ -8,5 +8,8 @@ enum InstagramSharing {
     /// Como obter (grátis): crie um app em https://developers.facebook.com/apps,
     /// copie o número do "App ID" e cole abaixo. Enquanto estiver vazio, o botão
     /// "Usar no Instagram" avisa que a configuração está pendente.
-    static let facebookAppID = ""
+    ///
+    /// Identificador público (embutido no app, vai na URL de compartilhamento) —
+    /// não confundir com a Chave Secreta do app, que nunca entra no código.
+    static let facebookAppID = "810447382061741"
 }

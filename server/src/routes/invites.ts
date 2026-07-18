@@ -1,6 +1,6 @@
 import { randomBytes, createHash } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, gt, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { users, invites } from '../db/schema.js';
 import { requireAuth, requirePermission } from '../auth/guards.js';
@@ -23,6 +23,8 @@ const acceptSchema = z.object({
   password: z.string().min(10),
 });
 
+const acceptQuerySchema = z.object({ token: z.string().min(32) });
+
 function hashToken(token: string) {
   return createHash('sha256').update(token).digest('hex');
 }
@@ -43,6 +45,17 @@ export async function inviteRoutes(app: FastifyInstance) {
     const lower = email.toLowerCase();
     const [existe] = await db.select().from(users).where(eq(users.email, lower)).limit(1);
     if (existe) return reply.code(409).send({ error: 'Já existe uma conta com esse e-mail.' });
+
+    // Sem esta checagem, dois convites pendentes para o mesmo e-mail são
+    // criáveis; o segundo aceite estouraria a constraint unique(email) de
+    // users com 500. Convite expirado não bloqueia — nesse caso o caminho
+    // certo é convidar de novo, não reenviar um token morto.
+    const [convitePendente] = await db.select().from(invites)
+      .where(and(eq(invites.email, lower), isNull(invites.acceptedAt), gt(invites.expiresAt, new Date())))
+      .limit(1);
+    if (convitePendente) {
+      return reply.code(409).send({ error: 'Já existe um convite pendente para esse e-mail. Use o reenvio.' });
+    }
 
     // O token só existe em claro dentro do e-mail. O banco guarda o hash, então
     // um vazamento do banco não permite aceitar convite pendente.
@@ -95,10 +108,14 @@ export async function inviteRoutes(app: FastifyInstance) {
   app.get('/invites/accept', {
     config: { rateLimit: { max: 10, timeWindow: '5 minutes' } },
   }, async (request, reply) => {
-    const { token } = request.query as { token?: string };
-    if (!token || token.length < 32) {
+    // Sem validar o tipo, ?token[]=x (ou token repetido na query) chega como
+    // array e hashToken() estoura 500 ao tentar hashear algo que não é
+    // string. zod recusa antes disso, com 400.
+    const parsedQuery = acceptQuerySchema.safeParse(request.query);
+    if (!parsedQuery.success) {
       return reply.code(400).send({ error: 'Convite inválido.' });
     }
+    const { token } = parsedQuery.data;
     const [invite] = await db.select().from(invites)
       .where(eq(invites.tokenHash, hashToken(token))).limit(1);
     if (!invite || invite.acceptedAt) {

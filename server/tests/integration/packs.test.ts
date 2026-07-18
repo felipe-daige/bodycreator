@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import { createHash } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import FormData from 'form-data';
 import { withTestDb } from '../setup/db.js';
@@ -301,7 +302,7 @@ describe('POST /packs/:id/unpublish', () => {
 });
 
 describe('POST /packs/:id/cover', () => {
-  it('grava os bytes idênticos no storage e preenche coverKey', async () => {
+  it('grava os bytes idênticos no storage e preenche coverKey com o checksum na chave', async () => {
     const cookie = await criarELogar('admin');
     const { packId } = await criarPackComCategoria(cookie);
     const original = await pngComAlfa();
@@ -309,9 +310,32 @@ describe('POST /packs/:id/cover', () => {
     const res = await subirCapa(cookie, packId, original);
     expect(res.statusCode).toBe(200);
 
+    const checksum8 = createHash('sha256').update(original).digest('hex').slice(0, 8);
     const [pack] = await t.db.select().from(packs).where(eq(packs.id, packId));
-    expect(pack!.coverKey).toBe(`packs/${pack!.slug}/cover.png`);
+    expect(pack!.coverKey).toBe(`packs/${pack!.slug}/cover-${checksum8}.png`);
     expect(await storage.get(pack!.coverKey!)).toEqual(original);
+  });
+
+  it('re-upload com bytes diferentes gera uma chave nova (o CDN nunca atualizaria atrás da mesma chave)', async () => {
+    const cookie = await criarELogar('admin');
+    const { packId } = await criarPackComCategoria(cookie);
+
+    const primeira = await subirCapa(cookie, packId, await pngComAlfa());
+    expect(primeira.statusCode).toBe(200);
+    const chaveAntiga = primeira.json().coverKey as string;
+
+    const bytesNovos = await pngComAlfa(600, 600);
+    const segunda = await subirCapa(cookie, packId, bytesNovos);
+    expect(segunda.statusCode).toBe(200);
+    const chaveNova = segunda.json().coverKey as string;
+
+    expect(chaveNova).not.toBe(chaveAntiga);
+
+    const [pack] = await t.db.select().from(packs).where(eq(packs.id, packId));
+    expect(pack!.coverKey).toBe(chaveNova);
+    expect(await storage.get(chaveNova)).toEqual(bytesNovos);
+    // O objeto antigo permanece no R2: manifestos já publicados o referenciam.
+    expect(await storage.get(chaveAntiga)).not.toBeNull();
   });
 
   it('recusa PNG inválido com a mensagem do validador', async () => {

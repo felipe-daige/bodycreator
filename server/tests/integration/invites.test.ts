@@ -103,6 +103,41 @@ describe('POST /invites', () => {
     });
     expect(res.statusCode).toBe(409);
   });
+
+  // Sem esta checagem, dois convites pendentes para o mesmo e-mail eram
+  // criáveis, e o segundo aceite estourava a constraint unique(email) de
+  // users com 500 — um bug de banco disfarçado de bug de painel.
+  it('recusa um segundo convite pendente para o mesmo e-mail com 409 em pt-BR', async () => {
+    const cookie = await criarELogar('admin');
+    const primeiro = await app.inject({
+      method: 'POST', url: '/invites', headers: { cookie },
+      payload: { email: 'duplicado@exemplo.com', role: 'gerente', permissions: [] },
+    });
+    expect(primeiro.statusCode).toBe(201);
+
+    const segundo = await app.inject({
+      method: 'POST', url: '/invites', headers: { cookie },
+      payload: { email: 'duplicado@exemplo.com', role: 'gerente', permissions: [] },
+    });
+    expect(segundo.statusCode).toBe(409);
+    expect(segundo.json().error).toMatch(/convite pendente/i);
+  });
+
+  it('permite convidar de novo um e-mail cujo convite anterior expirou', async () => {
+    const cookie = await criarELogar('admin');
+    await app.inject({
+      method: 'POST', url: '/invites', headers: { cookie },
+      payload: { email: 'expirado@exemplo.com', role: 'gerente', permissions: [] },
+    });
+    await t.db.update(invites).set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(invites.email, 'expirado@exemplo.com'));
+
+    const res = await app.inject({
+      method: 'POST', url: '/invites', headers: { cookie },
+      payload: { email: 'expirado@exemplo.com', role: 'gerente', permissions: [] },
+    });
+    expect(res.statusCode).toBe(201);
+  });
 });
 
 describe('POST /invites/:id/resend', () => {
@@ -178,6 +213,18 @@ describe('GET /invites/accept', () => {
     const token = await convidar();
     await t.db.update(invites).set({ expiresAt: new Date(Date.now() - 1000) });
     const res = await app.inject({ method: 'GET', url: `/invites/accept?token=${token}` });
+    expect(res.statusCode).toBe(400);
+  });
+
+  // Query repetida (?token=a&token=b&...) vira array em request.query.token.
+  // O código antigo checava só `!token || token.length < 32`, e um array
+  // passa por isso (array tem .length!) sempre que tiver 32+ elementos — daí
+  // hashToken(array) estourava 500 ao tentar hashear algo que não é string.
+  // Precisa de 32+ repetições para reproduzir: com poucas, o `.length` do
+  // array (contagem de elementos) já era < 32 e barrava por acidente.
+  it('recusa 400 (não 500) quando o token chega como array na querystring', async () => {
+    const repeticoes = Array.from({ length: 40 }, (_, i) => `token=tok${i}`).join('&');
+    const res = await app.inject({ method: 'GET', url: `/invites/accept?${repeticoes}` });
     expect(res.statusCode).toBe(400);
   });
 });

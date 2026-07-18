@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, asc } from 'drizzle-orm';
 import { z } from 'zod';
 import { packs, categories, stickers, catalogVersions } from '../db/schema.js';
 import { requireAuth, requirePermission } from '../auth/guards.js';
@@ -16,7 +16,11 @@ export async function publishRoutes(app: FastifyInstance) {
   app.post('/publish', {
     preHandler: [requireAuth, requirePermission('pack.publish')],
   }, async (request, reply) => {
-    const publicados = await db.select().from(packs).where(eq(packs.status, 'published'));
+    // Sem ORDER BY o retorno do SELECT não é determinístico e o sortOrder do
+    // pacote fica morto — a ordem do manifesto mudaria de publicação para
+    // publicação sem nenhuma mudança de dado.
+    const publicados = await db.select().from(packs).where(eq(packs.status, 'published'))
+      .orderBy(asc(packs.sortOrder), asc(packs.slug));
     const input: ManifestInput = { packs: [] };
 
     for (const pack of publicados) {

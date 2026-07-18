@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import { createHash } from 'node:crypto';
 import FormData from 'form-data';
 import { withTestDb } from '../setup/db.js';
 import { buildApp } from '../../src/app.js';
@@ -54,14 +55,37 @@ describe('POST /packs/:id/stickers', () => {
     expect(s!.tags).toEqual(['seta', 'apontar']);
   });
 
-  it('guarda no storage exatamente os bytes recebidos', async () => {
+  it('guarda no storage exatamente os bytes recebidos, com o checksum na chave', async () => {
     const cookie = await criarELogar('admin');
     const { packId, categoryId } = await criarPackComCategoria(cookie);
     const original = await pngComAlfa();
     await subirFigurinha(cookie, packId, categoryId, 'circulo', original);
 
+    const checksum8 = createHash('sha256').update(original).digest('hex').slice(0, 8);
     const [s] = await t.db.select().from(stickers);
+    expect(s!.fileKey).toMatch(new RegExp(`circulo-${checksum8}\\.png$`));
     expect(await storage.get(s!.fileKey)).toEqual(original);
+  });
+
+  it('apagar e recriar a mesma figurinha com bytes diferentes gera uma chave nova', async () => {
+    const cookie = await criarELogar('admin');
+    const { packId, categoryId } = await criarPackComCategoria(cookie);
+
+    const primeira = await subirFigurinha(cookie, packId, categoryId, 'reciclada', await pngComAlfa());
+    expect(primeira.statusCode).toBe(201);
+    const chaveAntiga = primeira.json().fileKey as string;
+
+    await app.inject({ method: 'DELETE', url: '/stickers/reciclada', headers: { cookie } });
+
+    const bytesNovos = await pngComAlfa(600, 600);
+    const segunda = await subirFigurinha(cookie, packId, categoryId, 'reciclada', bytesNovos);
+    expect(segunda.statusCode).toBe(201);
+    const chaveNova = segunda.json().fileKey as string;
+
+    expect(chaveNova).not.toBe(chaveAntiga);
+    expect(await storage.get(chaveNova)).toEqual(bytesNovos);
+    // O objeto antigo permanece no R2: manifestos já publicados o referenciam.
+    expect(await storage.get(chaveAntiga)).not.toBeNull();
   });
 
   it('recusa PNG sem alfa com mensagem em pt-BR', async () => {
@@ -106,6 +130,47 @@ describe('POST /packs/:id/stickers', () => {
     const { packId, categoryId } = await criarPackComCategoria(cookie);
     const res = await subirFigurinha(cookie, packId, categoryId, 'Seta Reta!', await pngComAlfa());
     expect(res.statusCode).toBe(400);
+  });
+
+  // JSON.parse cru sem guarda: texto que não é JSON vira exceção não tratada
+  // (500). Precisa virar 400 em pt-BR, como qualquer outro dado de entrada
+  // ruim.
+  it('recusa tags que não são JSON válido, com mensagem em pt-BR', async () => {
+    const cookie = await criarELogar('admin');
+    const { packId, categoryId } = await criarPackComCategoria(cookie);
+    const form = new FormData();
+    form.append('id', 'tags-invalidas');
+    form.append('name', 'Tags Inválidas');
+    form.append('categoryId', categoryId);
+    form.append('tags', 'isto não é json');
+    form.append('file', await pngComAlfa(), { filename: 'x.png', contentType: 'image/png' });
+    const res = await app.inject({
+      method: 'POST', url: `/packs/${packId}/stickers`,
+      headers: { cookie, ...form.getHeaders() }, payload: form.getBuffer(),
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toMatch(/lista de textos/i);
+    expect(await t.db.select().from(stickers)).toHaveLength(0);
+  });
+
+  // JSON válido mas não-array (ex.: "42") passava direto pro banco e quebrava
+  // a decodificação de [String] no app iOS quando o manifesto era publicado.
+  it('recusa tags que são JSON válido mas não uma lista, com mensagem em pt-BR', async () => {
+    const cookie = await criarELogar('admin');
+    const { packId, categoryId } = await criarPackComCategoria(cookie);
+    const form = new FormData();
+    form.append('id', 'tags-nao-lista');
+    form.append('name', 'Tags Não Lista');
+    form.append('categoryId', categoryId);
+    form.append('tags', '42');
+    form.append('file', await pngComAlfa(), { filename: 'x.png', contentType: 'image/png' });
+    const res = await app.inject({
+      method: 'POST', url: `/packs/${packId}/stickers`,
+      headers: { cookie, ...form.getHeaders() }, payload: form.getBuffer(),
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toMatch(/lista de textos/i);
+    expect(await t.db.select().from(stickers)).toHaveLength(0);
   });
 
   it('recusa 401 sem sessão', async () => {

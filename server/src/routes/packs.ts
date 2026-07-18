@@ -155,7 +155,11 @@ export async function packRoutes(app: FastifyInstance) {
     const validation = await validatePng(buffer);
     if (!validation.ok) return reply.code(400).send({ error: validation.error });
 
-    const coverKey = `packs/${pack.slug}/cover.png`;
+    // O checksum entra na chave porque re-upload de capa é fluxo suportado: o
+    // R2 serve tudo sob packs/ com cache immutable de 1 ano, então gravar nos
+    // mesmos bytes sob a mesma chave nunca atualizaria atrás do CDN. Objetos
+    // antigos ficam no R2 (nada os apaga), mas não são mais referenciados.
+    const coverKey = `packs/${pack.slug}/cover-${validation.checksum.slice(0, 8)}.png`;
     // Os bytes originais vão inalterados: reencodar poderia perder o alfa.
     await storage.put(coverKey, buffer, 'image/png');
 

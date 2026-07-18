@@ -35,6 +35,21 @@ export async function stickerRoutes(app: FastifyInstance) {
     });
     if (!meta.success) return reply.code(400).send({ error: meta.error.issues[0]!.message });
 
+    // JSON.parse cru aceita qualquer JSON válido (ex.: "42", que não é lista
+    // nenhuma) e qualquer entrada não-JSON vira exceção não tratada (500). O
+    // app iOS decodifica tags como [String]; um valor não-array quebraria essa
+    // decodificação assim que o manifesto fosse publicado.
+    let tags: string[];
+    try {
+      const parsedTags: unknown = JSON.parse(meta.data.tags);
+      if (!Array.isArray(parsedTags) || !parsedTags.every((tag) => typeof tag === 'string')) {
+        throw new Error('tags não é uma lista de textos');
+      }
+      tags = parsedTags;
+    } catch {
+      return reply.code(400).send({ error: 'As tags precisam ser uma lista de textos.' });
+    }
+
     const [cat] = await db.select().from(categories)
       .where(eq(categories.id, meta.data.categoryId)).limit(1);
     if (!cat || cat.packId !== packId) {
@@ -53,13 +68,17 @@ export async function stickerRoutes(app: FastifyInstance) {
     const validation = await validatePng(buffer);
     if (!validation.ok) return reply.code(400).send({ error: validation.error });
 
-    const fileKey = `packs/${pack.slug}/${meta.data.id}.png`;
+    // O checksum entra na chave porque apagar e recriar uma figurinha com o
+    // mesmo id é fluxo suportado: sem isso os bytes mudariam sob a mesma
+    // chave, e o cache immutable de 1 ano do R2 nunca atualizaria atrás do
+    // CDN. Objetos antigos ficam no R2 (nada os apaga).
+    const fileKey = `packs/${pack.slug}/${meta.data.id}-${validation.checksum.slice(0, 8)}.png`;
     // Os bytes originais vão inalterados: reencodar poderia perder o alfa.
     await storage.put(fileKey, buffer, 'image/png');
 
     const [sticker] = await db.insert(stickers).values({
       id: meta.data.id, packId, categoryId: meta.data.categoryId, name: meta.data.name,
-      tags: JSON.parse(meta.data.tags) as string[], fileKey,
+      tags, fileKey,
       width: validation.width, height: validation.height,
       bytes: validation.bytes, checksum: validation.checksum,
     }).returning();

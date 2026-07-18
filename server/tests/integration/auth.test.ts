@@ -115,3 +115,57 @@ describe('POST /auth/logout', () => {
     expect(res.statusCode).toBe(401);
   });
 });
+
+describe('POST /auth/change-password', () => {
+  it('tem rate limit próprio: a 6ª tentativa na janela recebe 429', async () => {
+    await criarUsuario();
+    const { cookie } = await logar();
+    for (let i = 0; i < 5; i += 1) {
+      const res = await app.inject({
+        method: 'POST', url: '/auth/change-password', headers: { cookie },
+        payload: { currentPassword: 'senha-errada', newPassword: 'nova-senha-1234' },
+      });
+      expect(res.statusCode).toBe(400);
+    }
+    const bloqueada = await app.inject({
+      method: 'POST', url: '/auth/change-password', headers: { cookie },
+      payload: { currentPassword: 'senha-errada', newPassword: 'nova-senha-1234' },
+    });
+    expect(bloqueada.statusCode).toBe(429);
+  });
+});
+
+describe('bloqueio de login por e-mail', () => {
+  // Cada tentativa usa um remoteAddress diferente para provar que o bloqueio
+  // é por e-mail, não pelo rate limit de IP da rota (que também existe, mas
+  // é um mecanismo separado e não basta atrás de proxy nem contra um
+  // atacante que rotaciona IP).
+  async function tentarComIp(email: string, password: string, ip: string) {
+    return app.inject({
+      method: 'POST', url: '/auth/login', payload: { email, password }, remoteAddress: ip,
+    });
+  }
+
+  it('bloqueia a 11ª tentativa para o mesmo e-mail após 10 falhas, mesmo de IPs diferentes', async () => {
+    await criarUsuario();
+    for (let i = 0; i < 10; i += 1) {
+      const res = await tentarComIp('medica@exemplo.com', 'senha-errada', `10.0.1.${i}`);
+      expect(res.statusCode).toBe(401);
+    }
+    // 11ª tentativa, mesmo com a senha certa: a janela de bloqueio já abriu
+    // para este e-mail, então nem chega a consultar o banco.
+    const bloqueada = await tentarComIp('medica@exemplo.com', 'senha-correta-123', '10.0.1.99');
+    expect(bloqueada.statusCode).toBe(429);
+    expect(bloqueada.json().error).toMatch(/tentativas/i);
+  });
+
+  it('não bloqueia um e-mail diferente que não compartilha o balde', async () => {
+    await criarUsuario({ email: 'alvo@exemplo.com' });
+    await criarUsuario({ email: 'outra@exemplo.com' });
+    for (let i = 0; i < 10; i += 1) {
+      await tentarComIp('alvo@exemplo.com', 'senha-errada', `10.0.2.${i}`);
+    }
+    const res = await tentarComIp('outra@exemplo.com', 'senha-correta-123', '10.0.2.99');
+    expect(res.statusCode).toBe(200);
+  });
+});

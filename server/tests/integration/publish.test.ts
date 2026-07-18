@@ -64,6 +64,27 @@ describe('POST /publish', () => {
     const res = await app.inject({ method: 'POST', url: '/publish' });
     expect(res.statusCode).toBe(401);
   });
+
+  it('ordena os pacotes do manifesto por sortOrder, não pela ordem de criação', async () => {
+    const cookie = await criarELogar('admin');
+    // Criado primeiro, mas fica com sortOrder maior — sem ORDER BY o SELECT
+    // não é determinístico e o sortOrder do pacote fica morto.
+    const primeiroCriado = await criarPackPublicavel(cookie, 'pack-b');
+    const segundoCriado = await criarPackPublicavel(cookie, 'pack-a');
+    await app.inject({
+      method: 'PATCH', url: `/packs/${primeiroCriado.packId}`, headers: { cookie },
+      payload: { sortOrder: 1 },
+    });
+    await app.inject({
+      method: 'PATCH', url: `/packs/${segundoCriado.packId}`, headers: { cookie },
+      payload: { sortOrder: 0 },
+    });
+
+    const res = await app.inject({ method: 'POST', url: '/publish', headers: { cookie } });
+    expect(res.statusCode).toBe(201);
+    const manifest = JSON.parse((await storage.get(`catalog/v${res.json().version}.json`))!.toString());
+    expect(manifest.packs.map((p: { id: string }) => p.id)).toEqual(['pack-a', 'pack-b']);
+  });
 });
 
 describe('POST /publish/rollback', () => {

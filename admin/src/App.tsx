@@ -6,6 +6,7 @@ import { TrocarSenha } from './pages/TrocarSenha';
 import { Packs } from './pages/Packs';
 import { PackEditor } from './pages/PackEditor';
 import { Users } from './pages/Users';
+import { Layout } from './components/Layout';
 
 function Protegido() {
   const { user, loading } = useAuth();
@@ -15,10 +16,12 @@ function Protegido() {
   if (user.mustChangePassword) return <TrocarSenha />;
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/pacotes" replace />} />
-      <Route path="/pacotes" element={<Packs />} />
-      <Route path="/pacotes/:id" element={<PackEditor />} />
-      <Route path="/usuarios" element={<Users />} />
+      <Route element={<Layout />}>
+        <Route path="/" element={<Navigate to="/pacotes" replace />} />
+        <Route path="/pacotes" element={<Packs />} />
+        <Route path="/pacotes/:id" element={<PackEditor />} />
+        <Route path="/usuarios" element={<Users />} />
+      </Route>
     </Routes>
   );
 }

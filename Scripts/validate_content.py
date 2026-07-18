@@ -29,7 +29,7 @@ def png_header(path):
             f.read(1)  # bit depth
             color_type = f.read(1)[0]
             return width, height, color_type
-    except OSError:
+    except (OSError, struct.error, IndexError):
         return None
 
 

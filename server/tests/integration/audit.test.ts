@@ -37,4 +37,59 @@ describe('recordAudit', () => {
     expect(JSON.stringify(row!.payload)).not.toContain('argon2');
     expect(row!.payload).toEqual({ name: 'Ana' });
   });
+
+  it('remove password de objeto aninhado', async () => {
+    await recordAudit(t.db, {
+      actorId: null, action: 'user.update', entityType: 'user',
+      payload: { user: { name: 'Ana', password: 'segredo' } },
+    });
+    const [row] = await t.db.select().from(auditLog);
+    expect(row!.payload).toEqual({ user: { name: 'Ana' } });
+  });
+
+  it('remove token de aninhamento profundo (3+ níveis)', async () => {
+    await recordAudit(t.db, {
+      actorId: null, action: 'auth.create', entityType: 'session',
+      payload: { session: { data: { metadata: { token: 'super-secret', userId: 'u1' } } } },
+    });
+    const [row] = await t.db.select().from(auditLog);
+    expect(row!.payload).toEqual({ session: { data: { metadata: { userId: 'u1' } } } });
+  });
+
+  it('remove password de cada objeto num array', async () => {
+    await recordAudit(t.db, {
+      actorId: null, action: 'users.bulk', entityType: 'user',
+      payload: { usuarios: [{ name: 'A', password: 'x' }, { name: 'B', passwordHash: 'y' }] },
+    });
+    const [row] = await t.db.select().from(auditLog);
+    expect(row!.payload).toEqual({ usuarios: [{ name: 'A' }, { name: 'B' }] });
+  });
+
+  it('preserva valores primitivos e datas intactos', async () => {
+    const now = new Date('2024-01-01T00:00:00Z');
+    await recordAudit(t.db, {
+      actorId: null, action: 'audit.test', entityType: 'test',
+      payload: { count: 42, active: true, nullable: null, date: now, text: 'hello' },
+    });
+    const [row] = await t.db.select().from(auditLog);
+    expect(row!.payload).toEqual({
+      count: 42,
+      active: true,
+      nullable: null,
+      date: '2024-01-01T00:00:00.000Z',
+      text: 'hello',
+    });
+  });
+
+  it('não trava em referência circular', async () => {
+    const obj: Record<string, unknown> = { name: 'circular' };
+    obj.self = obj;
+    await recordAudit(t.db, {
+      actorId: null, action: 'test.circular', entityType: 'test',
+      payload: obj,
+    });
+    const rows = await t.db.select().from(auditLog);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.payload).toEqual({ name: 'circular' });
+  });
 });

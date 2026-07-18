@@ -18,7 +18,7 @@
     "@fastify/cors": "^10.0.1",
     "@fastify/rate-limit": "^10.2.1",
     "@fastify/multipart": "^9.0.1",
-    "drizzle-orm": "^0.38.0",
+    "drizzle-orm": "^0.45.2",
     "postgres": "^3.4.5",
     "zod": "^3.24.1",
     "@node-rs/argon2": "^2.0.2",
@@ -29,8 +29,8 @@
   "devDependencies": {
     "typescript": "^5.7.2",
     "tsx": "^4.19.2",
-    "vitest": "^2.1.8",
-    "drizzle-kit": "^0.30.1",
+    "vitest": "^3.2.6",
+    "drizzle-kit": "^0.31.10",
     "@types/node": "^22.10.2"
   }
 }

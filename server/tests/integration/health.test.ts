@@ -3,6 +3,7 @@ import { buildApp } from '../../src/app.js';
 import { loadConfig } from '../../src/config.js';
 
 const config = loadConfig({
+  NODE_ENV: 'test',
   DATABASE_URL: 'postgres://x/x',
   SESSION_SECRET: 'x'.repeat(32),
   PUBLIC_PANEL_ORIGIN: 'http://localhost:5173',

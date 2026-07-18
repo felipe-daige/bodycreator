@@ -3415,25 +3415,36 @@ git commit -m "feat(admin): painel React com login, convite e troca de senha obr
 `admin/src/pages/PackEditor.tsx`:
 
 ```tsx
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { apiFetch, ApiError } from '../api';
 
 export function UploadFigurinha({ packId, categoryId, onPronto }: {
   packId: string; categoryId: string; onPronto: () => void;
 }) {
+  const [id, setId] = useState('');
+  const [name, setName] = useState('');
+  const [tags, setTags] = useState('');
+  const [arquivo, setArquivo] = useState<File | null>(null);
   const [erro, setErro] = useState('');
   const [enviando, setEnviando] = useState(false);
 
-  async function enviar(arquivo: File, id: string, name: string, tags: string[]) {
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!arquivo) { setErro('Escolha o arquivo PNG da figurinha.'); return; }
     setErro(''); setEnviando(true);
+
     const form = new FormData();
     form.append('id', id);
     form.append('name', name);
     form.append('categoryId', categoryId);
-    form.append('tags', JSON.stringify(tags));
+    form.append('tags', JSON.stringify(
+      tags.split(',').map((t) => t.trim()).filter(Boolean),
+    ));
     form.append('file', arquivo);
+
     try {
       await apiFetch(`/packs/${packId}/stickers`, { method: 'POST', body: form });
+      setId(''); setName(''); setTags(''); setArquivo(null);
       onPronto();
     } catch (e) {
       // O servidor devolve exatamente qual regra falhou, em pt-BR. Mostrar essa
@@ -3444,13 +3455,35 @@ export function UploadFigurinha({ packId, categoryId, onPronto }: {
     }
   }
 
-  return { enviar, erro, enviando } as never; // ver nota abaixo
+  return (
+    <form onSubmit={onSubmit} className="upload">
+      {/* As regras aparecem antes do envio para ninguém descobrir o limite errando. */}
+      <p className="sub">
+        PNG com fundo transparente, até 2 MB, maior lado entre 512 e 2048 px.
+      </p>
+      <label>Identificador
+        <input value={id} onChange={(e) => setId(e.target.value)} required
+               placeholder="seta-reta" pattern="[a-z0-9]+(-[a-z0-9]+)*" />
+        <small>Letras minúsculas, números e hífen.</small>
+      </label>
+      <label>Nome
+        <input value={name} onChange={(e) => setName(e.target.value)} required />
+      </label>
+      <label>Tags
+        <input value={tags} onChange={(e) => setTags(e.target.value)}
+               placeholder="seta, apontar, marcação" />
+        <small>Separadas por vírgula.</small>
+      </label>
+      <label>Arquivo
+        <input type="file" accept="image/png"
+               onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} required />
+      </label>
+      {erro && <p role="alert" className="erro">{erro}</p>}
+      <button disabled={enviando}>{enviando ? 'Enviando…' : 'Enviar figurinha'}</button>
+    </form>
+  );
 }
 ```
-
-Transforme o trecho acima num componente de formulário real: campo de id (com dica "letras minúsculas, números e hífen"), nome, tags separadas por vírgula, seletor de arquivo, e a área de erro exibindo `erro`. O comportamento a preservar é o do bloco `enviar`.
-
-A tela precisa mostrar as regras **antes** do envio — PNG com transparência, até 2 MB, maior lado entre 512 e 2048 px — para que a pessoa não descubra o limite errando.
 
 - [ ] **Step 4: Usuários e permissões**
 

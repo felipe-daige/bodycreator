@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { buildApp } from '../../src/app.js';
 import { loadConfig } from '../../src/config.js';
 import { createFakeMailer } from '../../src/email/send.js';
+import { createMemoryStorage } from '../../src/storage/memory.js';
 
 const config = loadConfig({
   NODE_ENV: 'test',
@@ -18,7 +19,7 @@ const config = loadConfig({
 
 describe('GET /health', () => {
   it('responde 200 com status ok', async () => {
-    const app = buildApp({ config, db: {} as never, mailer: createFakeMailer() });
+    const app = buildApp({ config, db: {} as never, mailer: createFakeMailer(), storage: createMemoryStorage() });
     const res = await app.inject({ method: 'GET', url: '/health' });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ status: 'ok' });

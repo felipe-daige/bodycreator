@@ -114,12 +114,26 @@ Todas as mensagens em português.
 - **Script de validação de conteúdo** roda a cada build — protege o ponto de entrada de trabalho manual (as artes).
 - **Checklist manual em iPhone real antes de cada release:** copiar → abrir Instagram → colar sobre foto no Stories (fluxo não automatizável).
 
+## 5b. Fluxo Instagram (revisado após teste em aparelho — 2026-07-18)
+
+O modelo original ("copiar → abrir a câmera do story → colar manualmente") gerou fricção no teste real: `instagram://story-camera` força uma foto nova e a figurinha não aparece sozinha. Decisão do usuário: a foto do paciente **já está tirada** (na galeria); o profissional a escolhe no app e o Instagram abre com ela de fundo e a figurinha por cima.
+
+Implementação: **API oficial "Sharing to Stories"** do Instagram. O app coloca no pasteboard `com.instagram.sharedSticker.backgroundImage` (a foto escolhida, re-encodada em JPEG) + `com.instagram.sharedSticker.stickerImage` (o PNG da figurinha, bytes inalterados para preservar o alfa) e abre `instagram-stories://share?source_application=<FacebookAppID>`.
+
+- **Dependência obrigatória:** Facebook App ID (exigido pela Meta desde jan/2023). Fica em `Export/InstagramSharing.swift`; sem ele o botão avisa que a integração está pendente.
+- **Foto:** selecionada via `PhotosPicker` (sem prompt de permissão, processo isolado). Vai só para o pasteboard local → Instagram; não é armazenada nem enviada a servidor. A label de privacidade "Dados não coletados" permanece válida.
+- **Fallback mantido:** "Só copiar a figurinha" (PNG no pasteboard) para colar manualmente em qualquer app.
+
+### Débito técnico registrado (fora do MVP)
+- **Tirar a foto dentro do app:** o MVP exige uma foto já existente na galeria. Capturar a foto do paciente pela câmera dentro do Body Creator (e então compor com a figurinha) fica para uma versão futura.
+- **Várias figurinhas numa mesma composição via API:** a API oficial envia uma figurinha por compartilhamento; múltiplas anotações numa só imagem hoje só pelo caminho "Só copiar" + colar repetidamente.
+
 ## 6. Fora do MVP (estrutura já preparada)
 
 - Cobrança (IAP por pacote ou assinatura) — campo `free` já existe no manifesto.
 - Conteúdo remoto/CDN, login, painel admin, Android.
 - Personalização de cor das figurinhas (candidata forte a v2).
-- Editor de foto próprio — a edição acontece no Instagram, por decisão de produto.
+- Captura de foto dentro do app (ver débito técnico em 5b).
 
 ## 7. Privacidade e App Store
 

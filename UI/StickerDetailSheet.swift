@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 import UIKit
 
 struct StickerDetailSheet: View {
@@ -8,6 +9,8 @@ struct StickerDetailSheet: View {
     @EnvironmentObject private var favorites: FavoritesStore
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
+    @State private var pickedPhoto: PhotosPickerItem?
+    @State private var isPreparingPhoto = false
     @State private var statusMessage: String?
     @State private var showCopiedToast = false
     @State private var showInstagramMissingAlert = false
@@ -22,7 +25,7 @@ struct StickerDetailSheet: View {
                     StickerImageView(url: imageURL)
                         .padding(24)
                 }
-                .frame(height: 240)
+                .frame(height: 220)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .overlay(alignment: .topTrailing) {
                     Button {
@@ -60,20 +63,27 @@ struct StickerDetailSheet: View {
                     .accessibilityIdentifier("favorite-toggle")
                 }
 
-                Button {
-                    handle(exporter.copyAndOpenInstagram(imageAt: imageURL))
-                } label: {
-                    Label("Copiar e abrir Instagram", systemImage: "camera")
-                        .frame(maxWidth: .infinity)
+                PhotosPicker(selection: $pickedPhoto, matching: .images, photoLibrary: .shared()) {
+                    Label(
+                        isPreparingPhoto ? "Preparando…" : "Usar no Instagram",
+                        systemImage: "photo.on.rectangle.angled"
+                    )
+                    .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
-                .accessibilityIdentifier("copy-and-open-instagram")
+                .disabled(isPreparingPhoto)
+                .accessibilityIdentifier("use-in-instagram")
+
+                Text("Escolha uma foto já tirada do paciente. O Instagram abre com a foto de fundo e a figurinha por cima, pronta para você arrastar e posicionar.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
 
                 Button {
                     handle(exporter.copyOnly(imageAt: imageURL))
                 } label: {
-                    Label("Só copiar", systemImage: "doc.on.clipboard")
+                    Label("Só copiar a figurinha", systemImage: "doc.on.clipboard")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
@@ -106,6 +116,10 @@ struct StickerDetailSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        .onChange(of: pickedPhoto) { item in
+            guard let item else { return }
+            prepareAndShare(item)
+        }
         .alert(
             "Instale o Instagram para usar as figurinhas",
             isPresented: $showInstagramMissingAlert
@@ -115,22 +129,52 @@ struct StickerDetailSheet: View {
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("A figurinha já foi copiada. Você também pode colar em outros apps, como o WhatsApp.")
+            Text("Você também pode usar \u{201C}Só copiar a figurinha\u{201D} e colar em outros apps, como o WhatsApp.")
+        }
+    }
+
+    private func prepareAndShare(_ item: PhotosPickerItem) {
+        isPreparingPhoto = true
+        Task {
+            defer {
+                isPreparingPhoto = false
+                pickedPhoto = nil
+            }
+            guard
+                let data = try? await item.loadTransferable(type: Data.self),
+                let jpeg = UIImage(data: data)?.jpegData(compressionQuality: 0.9)
+            else {
+                handle(.copyFailed)
+                return
+            }
+            handle(exporter.shareToInstagramStories(
+                stickerAt: imageURL,
+                backgroundImage: jpeg,
+                facebookAppID: InstagramSharing.facebookAppID
+            ))
         }
     }
 
     private func handle(_ outcome: ExportOutcome) {
         switch outcome {
-        case .copiedAndOpenedInstagram:
-            confirmCopied(nextStep: "No story, toque e segure na tela e escolha Colar para trazer a figurinha.")
+        case .openedInstagramStories:
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            withAnimation {
+                statusMessage = "No Instagram, arraste a figurinha para posicionar sobre a foto e publique."
+            }
         case .copiedOnly:
             confirmCopied(nextStep: "Agora é só colar onde quiser: toque e segure e escolha Colar.")
         case .instagramNotInstalled:
             notifyFailure()
             showInstagramMissingAlert = true
+        case .missingFacebookAppID:
+            notifyFailure()
+            withAnimation {
+                statusMessage = "Integração com o Instagram ainda não configurada (Facebook App ID)."
+            }
         case .copyFailed:
             notifyFailure()
-            withAnimation { statusMessage = "Não foi possível copiar. Tente de novo." }
+            withAnimation { statusMessage = "Não foi possível preparar a figurinha. Tente de novo." }
         }
     }
 

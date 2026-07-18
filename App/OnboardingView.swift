@@ -9,17 +9,17 @@ struct OnboardingView: View {
         (
             "hand.tap",
             "Escolha a figurinha",
-            "Navegue pelos pacotes, toque na figurinha e depois em “Copiar e abrir Instagram”."
+            "Navegue pelos pacotes e toque na figurinha que você quer usar."
         ),
         (
-            "camera",
-            "Monte seu story",
-            "No Instagram, crie o story normalmente com a foto que quiser."
+            "photo.on.rectangle.angled",
+            "Escolha a foto",
+            "Toque em “Usar no Instagram” e selecione a foto já tirada do paciente."
         ),
         (
-            "doc.on.clipboard",
-            "Cole a figurinha",
-            "Toque e segure na tela do story e escolha Colar. Depois, posicione e redimensione."
+            "checkmark.seal",
+            "Ajuste e publique",
+            "O Instagram abre com a foto de fundo e a figurinha por cima. Arraste para posicionar e publique."
         ),
     ]
 

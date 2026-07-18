@@ -22,6 +22,8 @@ final class BodyCreatorUITests: XCTestCase {
         XCTAssertTrue(app.buttons["sticker-seta-reta"].waitForExistence(timeout: 5))
         app.buttons["sticker-seta-reta"].tap()
 
+        XCTAssertTrue(app.buttons["use-in-instagram"].waitForExistence(timeout: 5))
+
         let copyOnlyButton = app.buttons["copy-only"]
         XCTAssertTrue(copyOnlyButton.waitForExistence(timeout: 5))
         copyOnlyButton.tap()
@@ -29,11 +31,6 @@ final class BodyCreatorUITests: XCTestCase {
             app.staticTexts["Agora é só colar onde quiser: toque e segure e escolha Colar."]
                 .waitForExistence(timeout: 3)
         )
-
-        app.buttons["copy-and-open-instagram"].tap()
-        let missingInstagramAlert = app.alerts["Instale o Instagram para usar as figurinhas"]
-        XCTAssertTrue(missingInstagramAlert.waitForExistence(timeout: 3))
-        missingInstagramAlert.buttons["Cancelar"].tap()
 
         let favoriteButton = app.buttons["favorite-toggle"]
         XCTAssertTrue(favoriteButton.waitForExistence(timeout: 3))

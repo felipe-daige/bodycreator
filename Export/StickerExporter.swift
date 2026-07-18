@@ -17,16 +17,24 @@ struct SystemURLOpener: URLOpening {
 }
 
 enum ExportOutcome: Equatable {
-    case copiedAndOpenedInstagram
     case copiedOnly
+    case openedInstagramStories
     case instagramNotInstalled
+    case missingFacebookAppID
     case copyFailed
 }
 
 @MainActor
 struct StickerExporter {
-    static let instagramStoriesURL = URL(string: "instagram://story-camera")!
     static let instagramAppStoreURL = URL(string: "https://apps.apple.com/app/instagram/id389801252")!
+
+    // Chaves da API oficial "Sharing to Stories" do Instagram.
+    static let backgroundImagePasteboardKey = "com.instagram.sharedSticker.backgroundImage"
+    static let stickerImagePasteboardKey = "com.instagram.sharedSticker.stickerImage"
+
+    static func storiesShareURL(facebookAppID: String) -> URL {
+        URL(string: "instagram-stories://share?source_application=\(facebookAppID)")!
+    }
 
     private let pasteboard: UIPasteboard
     private let opener: URLOpening
@@ -36,15 +44,34 @@ struct StickerExporter {
         self.opener = opener
     }
 
+    /// Copia só a figurinha (PNG com transparência) para o pasteboard, para colar
+    /// manualmente em qualquer app.
     func copyOnly(imageAt url: URL) -> ExportOutcome {
         copyToPasteboard(imageAt: url) ? .copiedOnly : .copyFailed
     }
 
-    func copyAndOpenInstagram(imageAt url: URL) -> ExportOutcome {
-        guard copyToPasteboard(imageAt: url) else { return .copyFailed }
-        guard opener.canOpenURL(Self.instagramStoriesURL) else { return .instagramNotInstalled }
-        opener.open(Self.instagramStoriesURL)
-        return .copiedAndOpenedInstagram
+    /// Abre o Instagram Stories já com a foto escolhida como fundo e a figurinha
+    /// posicionável por cima, via API oficial. Os bytes da figurinha vão
+    /// inalterados (preserva o canal alfa).
+    func shareToInstagramStories(
+        stickerAt stickerURL: URL,
+        backgroundImage backgroundData: Data,
+        facebookAppID: String
+    ) -> ExportOutcome {
+        guard !facebookAppID.isEmpty else { return .missingFacebookAppID }
+        guard let stickerData = try? Data(contentsOf: stickerURL), UIImage(data: stickerData) != nil else {
+            return .copyFailed
+        }
+        let shareURL = Self.storiesShareURL(facebookAppID: facebookAppID)
+        guard opener.canOpenURL(shareURL) else { return .instagramNotInstalled }
+
+        let items: [[String: Any]] = [[
+            Self.backgroundImagePasteboardKey: backgroundData,
+            Self.stickerImagePasteboardKey: stickerData,
+        ]]
+        pasteboard.setItems(items, options: [.expirationDate: Date().addingTimeInterval(300)])
+        opener.open(shareURL)
+        return .openedInstagramStories
     }
 
     // Os bytes do PNG vão inalterados para o pasteboard: re-encodar via UIImage

@@ -23,10 +23,10 @@ struct RootView: View {
             }
 
             NavigationStack {
-                AdminRootView()
+                SettingsRootView()
             }
             .tabItem {
-                Label("Gerenciar", systemImage: "gearshape.2")
+                Label("Configurações", systemImage: "gearshape")
             }
         }
         .onAppear {

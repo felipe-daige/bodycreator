@@ -12,7 +12,7 @@ struct AdminPacksView: View {
 
     var body: some View {
         List {
-            if auth.can(.publishPack) {
+            if auth.isOwnerAdministrator {
                 Section("Catálogo") {
                     Text("Publicar um pacote o deixa elegível. Este botão envia a versão atual de todos os pacotes publicados para quem usa o app.")
                         .font(.footnote)
@@ -72,7 +72,7 @@ struct AdminPacksView: View {
         }
         .navigationTitle("Pacotes")
         .toolbar {
-            if auth.can(.createPack) {
+            if auth.isOwnerAdministrator {
                 ToolbarItem(placement: .primaryAction) {
                     Button { showNewPack = true } label: { Image(systemName: "plus") }
                         .accessibilityLabel("Novo pacote")

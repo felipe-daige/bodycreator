@@ -1,12 +1,12 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { users } from '../db/schema.js';
-import { canDo, type Permission, type Role } from './permissions.js';
+import type { Permission } from './permissions.js';
+import { isOwnerEmail } from './ownerAccess.js';
 import { SESSION_COOKIE } from './session.js';
 
 export type AuthedUser = {
-  id: string; email: string; name: string; role: Role;
-  permissions: string[]; mustChangePassword: boolean;
+  id: string; email: string; name: string; mustChangePassword: boolean;
 };
 
 // Rotas em que uma conta com senha semeada (mustChangePassword) ainda pode
@@ -31,8 +31,8 @@ export async function requireAuth(request: FastifyRequest, reply: FastifyReply) 
   }
 
   request.currentUser = {
-    id: user.id, email: user.email, name: user.name, role: user.role,
-    permissions: user.permissions, mustChangePassword: user.mustChangePassword,
+    id: user.id, email: user.email, name: user.name,
+    mustChangePassword: user.mustChangePassword,
   };
 
   // A senha semeada é tratada como comprometida (spec) — o React já bloqueia
@@ -50,7 +50,11 @@ export function requirePermission(permission: Permission) {
   return async function (request: FastifyRequest, reply: FastifyReply) {
     const user = request.currentUser;
     if (!user) return reply.code(401).send({ error: 'Sessão expirada. Entre novamente.' });
-    if (!canDo(user, permission)) {
+    // A autorização administrativa é uma política de proprietário único.
+    // `permission` permanece na assinatura para as rotas continuarem
+    // documentando a intenção de cada operação, mas não concede acesso.
+    void permission;
+    if (!isOwnerEmail(user.email, request.server.deps.config.OWNER_ADMIN_EMAIL)) {
       return reply.code(403).send({ error: 'Você não tem permissão para esta ação.' });
     }
   };

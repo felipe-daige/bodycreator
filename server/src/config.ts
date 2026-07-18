@@ -5,6 +5,7 @@ const schema = z.object({
   PORT: z.coerce.number().default(3000),
   DATABASE_URL: z.string().min(1),
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET precisa de ao menos 32 caracteres'),
+  OWNER_ADMIN_EMAIL: z.string().email().default('felipedaige@gmail.com'),
   // Link que o e-mail de convite abre diretamente no app iOS.
   PUBLIC_APP_INVITE_URL: z.string().url().default('bodycreator://convite'),
   R2_ACCOUNT_ID: z.string().min(1),

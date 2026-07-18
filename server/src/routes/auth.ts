@@ -74,8 +74,8 @@ export async function authRoutes(app: FastifyInstance) {
     await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
     setSession(reply, user.id, isProd);
     return {
-      id: user.id, email: user.email, name: user.name, role: user.role,
-      permissions: user.permissions, mustChangePassword: user.mustChangePassword,
+      id: user.id, email: user.email, name: user.name,
+      mustChangePassword: user.mustChangePassword,
     };
   });
 

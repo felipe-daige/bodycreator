@@ -27,7 +27,9 @@ beforeEach(async () => {
 });
 
 async function criarELogar(role: 'admin' | 'gerente', permissions: string[] = []) {
-  const email = `${role}-${Math.random().toString(36).slice(2)}@x.com`;
+  const email = role === 'admin'
+    ? config.OWNER_ADMIN_EMAIL
+    : `${role}-${Math.random().toString(36).slice(2)}@x.com`;
   await t.db.insert(users).values({
     email, name: role, passwordHash: await hashPassword('senha-de-teste-123'),
     role, permissions, status: 'active',

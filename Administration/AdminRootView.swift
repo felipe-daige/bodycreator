@@ -1,79 +1,98 @@
 import SwiftUI
 
-struct AdminRootView: View {
+struct SettingsRootView: View {
     @EnvironmentObject private var auth: AuthStore
 
     var body: some View {
         Group {
-            switch auth.phase {
-            case .checking:
-                VStack(spacing: 12) {
-                    ProgressView()
-                    Text("Verificando acesso…")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            case .signedOut:
-                AdminLoginView()
-            case .signedIn:
-                if auth.user?.mustChangePassword == true {
-                    ChangePasswordView()
-                } else {
-                    AdminDashboardView()
-                }
+            if auth.phase == .signedIn, auth.user?.mustChangePassword == true {
+                ChangePasswordView()
+            } else {
+                SettingsListView()
             }
         }
         .task { await auth.restoreSession() }
     }
 }
 
-private struct AdminDashboardView: View {
+private struct SettingsListView: View {
     @EnvironmentObject private var auth: AuthStore
+    @EnvironmentObject private var catalog: CatalogStore
 
     var body: some View {
         List {
-            if let user = auth.user {
-                Section {
-                    VStack(alignment: .leading, spacing: 5) {
-                        Text(user.name).font(.headline)
-                        Text(user.email)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        Text(user.role.label)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Color.accentColor)
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
-
-            Section("Administração") {
-                NavigationLink {
-                    AdminPacksView()
+            Section("Conteúdo") {
+                Button {
+                    Task { await catalog.refresh() }
                 } label: {
-                    Label("Pacotes e figurinhas", systemImage: "square.grid.2x2")
+                    HStack {
+                        Label("Atualizar catálogo", systemImage: "arrow.clockwise")
+                        Spacer()
+                        if catalog.isRefreshing { ProgressView() }
+                    }
                 }
-                .accessibilityIdentifier("admin-packs")
+                .disabled(catalog.isRefreshing)
+                .accessibilityIdentifier("settings-refresh")
 
-                if auth.can(.manageUsers) {
+                LabeledContent("Pacotes disponíveis", value: "\(catalog.packs.count)")
+
+                if auth.isOwnerAdministrator {
                     NavigationLink {
-                        ManagedUsersView()
+                        AdminPacksView()
                     } label: {
-                        Label("Usuários e permissões", systemImage: "person.2")
+                        Label("Pacotes e figurinhas", systemImage: "square.grid.2x2")
                     }
-                    .accessibilityIdentifier("admin-users")
+                    .accessibilityIdentifier("owner-content-management")
+                }
+
+                if let message = catalog.refreshMessage {
+                    Text(message)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
             }
 
-            Section {
-                NavigationLink {
-                    AdminAccountView()
-                } label: {
-                    Label("Conta administrativa", systemImage: "person.crop.circle")
+            Section("Conta") {
+                switch auth.phase {
+                case .checking:
+                    HStack {
+                        ProgressView()
+                        Text("Carregando…").foregroundStyle(.secondary)
+                    }
+                case .signedOut:
+                    NavigationLink {
+                        AccountLoginView()
+                    } label: {
+                        Label("Entrar na conta", systemImage: "person.crop.circle")
+                    }
+                    .accessibilityIdentifier("settings-login")
+                case .signedIn:
+                    NavigationLink {
+                        AccountView()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(auth.user?.name ?? "Conta")
+                                .font(.headline)
+                            if let email = auth.user?.email {
+                                Text(email)
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                    .accessibilityIdentifier("settings-account")
                 }
+            }
+
+            Section("Aplicativo") {
+                LabeledContent("Versão", value: appVersion)
             }
         }
-        .navigationTitle("Gerenciar")
+        .navigationTitle("Configurações")
+    }
+
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
     }
 }

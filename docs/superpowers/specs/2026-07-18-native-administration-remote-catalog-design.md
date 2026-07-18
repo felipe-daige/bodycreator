@@ -6,25 +6,22 @@
 ## 1. Decisão de produto
 
 Toda administração vive dentro do app iOS. O painel React deixa de fazer parte do
-produto e do deploy. A API existente continua sendo a autoridade de autenticação,
-permissões e dados; mover a interface não move segurança para o cliente.
+produto e do deploy. A API existente continua sendo a autoridade de autenticação
+e dados; mover a interface não move segurança para o cliente.
 
-O cliente que usa figurinhas continua sem cadastro. A aba **Gerenciar** é o ponto
-de entrada explícito para admin e gerentes. Antes do login ela explica que se trata
-da área administrativa; depois do login mostra somente os módulos autorizados.
+O cliente que usa figurinhas continua sem cadastro. A aba **Configurações** é
+desenhada para a experiência comum e não menciona administração, papel ou
+permissões. Somente `felipedaige@gmail.com` enxerga, de forma contextual, a opção
+de organizar pacotes e figurinhas.
 
-Loja/IAP, preço efetivo, faturamento e Explorar não entram nesta entrega. As
-permissões `pack.price` e `report.view` continuam reservadas para essas etapas.
+Loja/IAP, preço efetivo, faturamento e Explorar não entram nesta entrega.
 
 ## 2. Experiência administrativa
 
-- Login por e-mail e senha dentro da aba Gerenciar, com sessão em cookie
+- Configurações comuns com atualização do catálogo, conta e versão do app.
+- Login por e-mail e senha dentro da tela Conta, com sessão em cookie
   `httpOnly` gerenciado por `URLSession`.
 - Troca obrigatória da senha inicial antes de qualquer ação administrativa.
-- Convite de admin/gerente, seleção granular de permissões e reenvio.
-- Link do e-mail em `bodycreator://convite?token=...`, que abre o formulário
-  nativo, valida o token, cria a senha e entra automaticamente.
-- Lista de usuários, edição de permissões e desativação imediata.
 - Criação e edição de pacote, categorias, capa e figurinhas.
 - Arquivos escolhidos no app Arquivos. O PNG passa ao multipart sem
   reencodificação; validação definitiva continua no servidor.
@@ -52,8 +49,11 @@ nunca esvaziam conteúdo já disponível.
 
 - O app não persiste senha/token em `UserDefaults`; o cookie assinado contém só o
   id e o servidor relê o usuário a cada requisição.
-- Controles SwiftUI seguem `AuthStore.can()` por ergonomia, mas cada rota mantém
-  `requirePermission`; 401 e 403 continuam distintos.
+- O app compara o e-mail apenas para decidir a interface. Cada rota de gestão
+  compara novamente com `OWNER_ADMIN_EMAIL`; papéis ou listas de permissões não
+  concedem acesso a outro e-mail.
+- Antes de ouvir conexões, a API promove a conta proprietária e limpa os
+  privilégios de todas as outras contas existentes.
 - Fotos de pacientes seguem apenas no aparelho/pasteboard e não são enviadas à
   API.
 - Nome, e-mail e identificador das contas administrativas são dados vinculados,
@@ -67,14 +67,15 @@ O target registra o URL scheme `bodycreator`. Debug aponta a API para
 `project.yml` antes do archive.
 
 Produção executa somente Postgres, Fastify e Caddy. Não existe imagem/volume do
-painel web. A App Review recebe uma conta demo e instruções para a aba Gerenciar.
+painel web. A App Review recebe uma conta demo e instruções para Configurações.
 
 ## 6. Critérios de aceite
 
 - Build iOS 16+ sem dependências externas.
-- Teste de UI prova que o login está dentro do app e teste local prova login real
-  contra a API.
+- Teste de UI prova que Configurações é uma tela comum e teste local prova login
+  real contra a API.
 - Testes unitários cobrem cliente HTTP, multipart com bytes idênticos, deep link,
   leitura de PNG e cache/checksum do catálogo.
-- Testes do servidor cobrem ponteiro público e exclusão/anônimização da conta.
+- Testes do servidor cobrem proprietário único, ponteiro público e
+  exclusão/anônimização da conta.
 - Suite anterior de Instagram/favoritos permanece verde.

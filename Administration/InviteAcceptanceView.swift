@@ -22,7 +22,6 @@ struct InviteAcceptanceView: View {
                 } else if let details {
                     Section("Convite") {
                         LabeledContent("E-mail", value: details.email)
-                        LabeledContent("Papel", value: details.role.label)
                     }
                     Section("Crie seu acesso") {
                         TextField("Nome", text: $name)

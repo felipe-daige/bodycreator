@@ -1,7 +1,8 @@
 import SwiftUI
 
-struct AdminLoginView: View {
+struct AccountLoginView: View {
     @EnvironmentObject private var auth: AuthStore
+    @Environment(\.dismiss) private var dismiss
     @State private var email = ""
     @State private var password = ""
     @State private var isSubmitting = false
@@ -11,12 +12,12 @@ struct AdminLoginView: View {
         Form {
             Section {
                 VStack(spacing: 12) {
-                    Image(systemName: "lock.shield.fill")
+                    Image(systemName: "person.crop.circle.fill")
                         .font(.system(size: 42))
                         .foregroundStyle(Color.accentColor)
-                    Text("Área administrativa")
+                    Text("Sua conta")
                         .font(.title2.bold())
-                    Text("Entre para gerenciar usuários, permissões, pacotes e figurinhas. Quem usa o catálogo não precisa de conta.")
+                    Text("Entre com seu e-mail e senha.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -31,10 +32,10 @@ struct AdminLoginView: View {
                     .textContentType(.username)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                    .accessibilityIdentifier("admin-email")
+                    .accessibilityIdentifier("account-email")
                 SecureField("Senha", text: $password)
                     .textContentType(.password)
-                    .accessibilityIdentifier("admin-password")
+                    .accessibilityIdentifier("account-password")
             }
 
             if let message = errorMessage ?? auth.connectionMessage {
@@ -57,10 +58,10 @@ struct AdminLoginView: View {
                     }
                 }
                 .disabled(isSubmitting || email.isEmpty || password.isEmpty)
-                .accessibilityIdentifier("admin-login")
+                .accessibilityIdentifier("account-login")
             }
         }
-        .navigationTitle("Gerenciar")
+        .navigationTitle("Conta")
     }
 
     private func submit() {
@@ -70,6 +71,7 @@ struct AdminLoginView: View {
             defer { isSubmitting = false }
             do {
                 try await auth.login(email: email, password: password)
+                dismiss()
             } catch {
                 errorMessage = error.localizedDescription
             }

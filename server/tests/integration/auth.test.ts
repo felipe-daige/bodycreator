@@ -87,13 +87,14 @@ describe('GET /auth/me', () => {
     expect(res.statusCode).toBe(401);
   });
 
-  it('devolve o usuário logado com as permissões', async () => {
+  it('devolve somente o perfil necessário para a conta', async () => {
     await criarUsuario();
     const { cookie } = await logar();
     const res = await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie } });
     expect(res.statusCode).toBe(200);
     expect(res.json().email).toBe('medica@exemplo.com');
-    expect(res.json().permissions).toEqual(['pack.edit']);
+    expect(res.json().role).toBeUndefined();
+    expect(res.json().permissions).toBeUndefined();
   });
 
   it('deixa de funcionar assim que o usuário é desativado', async () => {

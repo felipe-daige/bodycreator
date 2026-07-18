@@ -121,6 +121,8 @@ Pontos de atenção ao preencher (documentados também nos comentários do próp
   `openssl rand -base64 32` — nunca reaproveite um valor de exemplo.
 - `API_DOMAIN` é o host público usado pelo app (o mesmo configurado como
   `API_BASE_URL` de Release em `project.yml`).
+- `OWNER_ADMIN_EMAIL` deve ser `felipedaige@gmail.com`. Ao iniciar, a API promove
+  essa conta e remove papéis/permissões administrativas de todas as demais.
 - `PUBLIC_APP_INVITE_URL` deve permanecer `bodycreator://convite`; é o link que
   abre a tela nativa de aceite de convite.
 - `DATABASE_URL` **repete** o usuário/senha/banco de `POSTGRES_USER` /
@@ -128,7 +130,7 @@ Pontos de atenção ao preencher (documentados também nos comentários do próp
   `${VAR}` referenciando outra variável do mesmo arquivo, então não dá pra
   compor a URL a partir das outras três.
 - `ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD` **não vão neste arquivo** — são
-  passadas na hora, uma única vez, no comando do passo 7. Deixá-las num `.env`
+  passadas na hora, uma única vez, no comando do passo 9. Deixá-las num `.env`
   persistente seria mais uma forma de a senha do primeiro admin vazar para
   qualquer coisa que leia esse arquivo depois.
 
@@ -184,15 +186,15 @@ docker compose run --rm api node dist/db/migrate.js
 docker compose up -d
 ```
 
-### 9. Criar o primeiro usuário admin
+### 9. Criar a conta proprietária
 
 O seeder é idempotente: se o e-mail já existe, ele não mexe na senha — então é
-seguro rodar mais de uma vez sem risco de "resetar" um admin sem querer.
+seguro rodar mais de uma vez sem risco de "resetar" a conta sem querer.
 
 ```bash
 cd /opt/bodycreator
 docker compose run --rm \
-  -e ADMIN_SEED_EMAIL="admin@seudominio.com.br" \
+  -e ADMIN_SEED_EMAIL="felipedaige@gmail.com" \
   -e ADMIN_SEED_PASSWORD="uma-senha-forte-de-verdade-aqui" \
   api node dist/seed-admin.js
 ```
@@ -391,7 +393,7 @@ ficou de fora do backup do dia.
    API" se aplica normalmente).
 4. Rode `restore-check.sh` uma vez à mão para confirmar, de forma independente da
    restauração que acabou de fazer, que o banco novo tem o formato esperado.
-5. Confirme login na aba **Gerenciar** do app com um usuário que existia antes do desastre — é a
+5. Confirme login na aba **Configurações** do app com a conta proprietária — é a
    prova final de que os dados voltaram, não só o esquema.
 6. Reagende o cron (seção "Agendar" acima) no servidor novo — ele não veio junto
    na reconstrução do zero.
@@ -443,7 +445,7 @@ novo:
    `authorized_keys` do `deploy`; chave privada como secret `VPS_SSH_KEY` no
    GitHub, junto com `VPS_HOST` e `VPS_USER`.
 9. Push na `main` (ou "Run workflow" manual) dispara o primeiro deploy.
-10. Rodar o seeder do admin (`docker compose run --rm -e ADMIN_SEED_EMAIL=...
+10. Rodar o seeder do proprietário (`docker compose run --rm -e ADMIN_SEED_EMAIL=felipedaige@gmail.com
     -e ADMIN_SEED_PASSWORD=... api node dist/seed-admin.js`).
 11. Cadastrar o monitor de uptime externo (seção acima) — pendência para o dono
     do projeto.

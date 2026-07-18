@@ -13,7 +13,7 @@ struct ChangePasswordView: View {
             Section {
                 Text("Troque sua senha")
                     .font(.title2.bold())
-                Text("Por segurança, a senha inicial não pode ser usada para administrar o conteúdo.")
+                Text("Por segurança, defina uma senha pessoal antes de continuar.")
                     .foregroundStyle(.secondary)
             }
 

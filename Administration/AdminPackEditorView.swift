@@ -83,12 +83,12 @@ struct AdminPackEditorView: View {
                 LabeledContent("Autor(a)", value: pack.authorName)
                 LabeledContent("Status", value: pack.status.label)
                 if !pack.description.isEmpty { Text(pack.description).foregroundStyle(.secondary) }
-                if auth.can(.editPack) {
+                if auth.isOwnerAdministrator {
                     Button("Editar informações") { showEditInfo = true }
                 }
             }
 
-            if auth.can(.editPack) {
+            if auth.isOwnerAdministrator {
                 Section("Capa") {
                     Label(
                         pack.coverKey == nil ? "Este pacote ainda não tem capa." : "Capa cadastrada.",
@@ -101,7 +101,7 @@ struct AdminPackEditorView: View {
                 }
             }
 
-            if auth.can(.publishPack) {
+            if auth.isOwnerAdministrator {
                 Section("Publicação do pacote") {
                     Text("Esta ação só torna o pacote elegível. Depois, publique o catálogo na tela anterior para a mudança chegar aos usuários.")
                         .font(.footnote)
@@ -124,14 +124,14 @@ struct AdminPackEditorView: View {
                 } else {
                     ForEach(pack.categories) { Text($0.name) }
                 }
-                if auth.can(.editPack) {
+                if auth.isOwnerAdministrator {
                     TextField("Nova categoria", text: $newCategory)
                     Button(isCreatingCategory ? "Criando…" : "Criar categoria") { createCategory() }
                         .disabled(isCreatingCategory || newCategory.count < 2)
                 }
             }
 
-            if auth.can(.importSticker) {
+            if auth.isOwnerAdministrator {
                 Section {
                     Button { showStickerUpload = true } label: {
                         Label("Enviar figurinha", systemImage: "square.and.arrow.up")
@@ -163,7 +163,7 @@ struct AdminPackEditorView: View {
                             }
                         }
                         .swipeActions {
-                            if auth.can(.editPack) {
+                            if auth.isOwnerAdministrator {
                                 Button("Excluir", role: .destructive) { stickerToDelete = sticker }
                             }
                         }

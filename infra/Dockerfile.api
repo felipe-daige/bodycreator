@@ -1,6 +1,6 @@
 # Build de produção da API (server/). Contexto de build é a raiz do repo
 # (docker build -f infra/Dockerfile.api .) para poder copiar server/ isolado
-# do resto do monorepo (App/, admin/, etc. nunca entram nesta imagem).
+# do resto do monorepo (fontes do app iOS nunca entram nesta imagem).
 FROM node:22-slim AS build
 WORKDIR /app
 COPY server/package*.json ./

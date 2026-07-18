@@ -62,18 +62,19 @@ final class BodyCreatorUITests: XCTestCase {
     }
 
     @MainActor
-    func testAdministrationLivesInsideTheApp() throws {
+    func testSettingsAreDesignedForARegularUser() throws {
         let app = XCUIApplication()
         app.launch()
         finishOnboardingIfNeeded(in: app)
 
-        app.tabBars.buttons["Gerenciar"].tap()
+        app.tabBars.buttons["Configurações"].tap()
+        signOutIfNeeded(in: app)
 
-        XCTAssertTrue(app.navigationBars["Gerenciar"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Área administrativa"].exists)
-        XCTAssertTrue(app.textFields["admin-email"].exists)
-        XCTAssertTrue(app.secureTextFields["admin-password"].exists)
-        XCTAssertTrue(app.buttons["admin-login"].exists)
+        XCTAssertTrue(app.navigationBars["Configurações"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["settings-refresh"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["settings-login"].exists)
+        XCTAssertFalse(app.staticTexts["Área administrativa"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["owner-content-management"].exists)
     }
 
     @MainActor
@@ -89,16 +90,19 @@ final class BodyCreatorUITests: XCTestCase {
             environment["E2E_API_URL"] ?? "http://127.0.0.1:3000"
         app.launch()
         finishOnboardingIfNeeded(in: app)
-        app.tabBars.buttons["Gerenciar"].tap()
+        app.tabBars.buttons["Configurações"].tap()
+        let accountLink = app.descendants(matching: .any)["settings-login"]
+        XCTAssertTrue(accountLink.waitForExistence(timeout: 5))
+        accountLink.tap()
 
-        let emailField = app.textFields["admin-email"]
+        let emailField = app.textFields["account-email"]
         XCTAssertTrue(emailField.waitForExistence(timeout: 5))
         emailField.tap()
         emailField.typeText(email)
-        let passwordField = app.secureTextFields["admin-password"]
+        let passwordField = app.secureTextFields["account-password"]
         passwordField.tap()
         passwordField.typeText(password)
-        app.buttons["admin-login"].tap()
+        app.buttons["account-login"].tap()
 
         XCTAssertTrue(app.staticTexts["Troque sua senha"].waitForExistence(timeout: 8))
     }
@@ -112,5 +116,20 @@ final class BodyCreatorUITests: XCTestCase {
         app.buttons["Próximo"].tap()
         app.buttons["Próximo"].tap()
         app.buttons["Começar"].tap()
+    }
+
+    @MainActor
+    private func signOutIfNeeded(in app: XCUIApplication) {
+        if app.buttons["Sair"].waitForExistence(timeout: 2) {
+            app.buttons["Sair"].tap()
+            return
+        }
+
+        let account = app.descendants(matching: .any)["settings-account"]
+        guard account.exists else { return }
+        account.tap()
+        if app.buttons["Sair"].waitForExistence(timeout: 2) {
+            app.buttons["Sair"].tap()
+        }
     }
 }

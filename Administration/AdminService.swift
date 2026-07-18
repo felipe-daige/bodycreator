@@ -42,34 +42,6 @@ struct AdminService {
         )
     }
 
-    func users() async throws -> [ManagedUser] { try await api.get("users") }
-
-    func invite(email: String, role: AdminRole, permissions: Set<AdminPermission>) async throws -> InviteSummary {
-        try await api.post(
-            "invites",
-            body: InviteBody(
-                email: email,
-                role: role,
-                permissions: permissions.map(\.rawValue).sorted()
-            )
-        )
-    }
-
-    func resendInvite(id: String) async throws {
-        let _: OKResponse = try await api.post("invites/\(id)/resend")
-    }
-
-    func updateUser(id: String, permissions: Set<AdminPermission>) async throws {
-        let _: OKResponse = try await api.patch(
-            "users/\(id)",
-            body: UpdateUserBody(permissions: permissions.map(\.rawValue).sorted())
-        )
-    }
-
-    func disableUser(id: String) async throws {
-        let _: OKResponse = try await api.post("users/\(id)/disable")
-    }
-
     func packs() async throws -> [AdminPack] { try await api.get("packs") }
     func pack(id: String) async throws -> AdminPackDetail { try await api.get("packs/\(id)") }
 
@@ -132,8 +104,6 @@ private struct LoginBody: Encodable { let email: String; let password: String }
 private struct ChangePasswordBody: Encodable { let currentPassword: String; let newPassword: String }
 private struct DeleteAccountBody: Encodable { let currentPassword: String }
 private struct AcceptInviteBody: Encodable { let token: String; let name: String; let password: String }
-private struct InviteBody: Encodable { let email: String; let role: AdminRole; let permissions: [String] }
-private struct UpdateUserBody: Encodable { let permissions: [String] }
 private struct CreatePackBody: Encodable { let slug: String; let name: String; let description: String; let authorName: String }
 private struct UpdatePackBody: Encodable { let name: String; let description: String; let sortOrder: Int }
 private struct CreateCategoryBody: Encodable { let name: String }

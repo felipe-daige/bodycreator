@@ -23,7 +23,9 @@ export function buildTestConfig(databaseUrl: string): Config {
 // arquivo de teste, onde `app` é recriado a cada caso.
 export function criarELogarComApp(db: Db, getApp: () => FastifyInstance) {
   return async function criarELogar(role: 'admin' | 'gerente', permissions: string[] = []) {
-    const email = `${role}-${Math.random().toString(36).slice(2)}@x.com`;
+    const email = role === 'admin'
+      ? getApp().deps.config.OWNER_ADMIN_EMAIL
+      : `${role}-${Math.random().toString(36).slice(2)}@x.com`;
     await db.insert(users).values({
       email, name: role, passwordHash: await hashPassword('senha-de-teste-123'),
       role, permissions, status: 'active',

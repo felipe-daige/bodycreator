@@ -5,6 +5,7 @@ import { createResendMailer, type Mailer } from './email/send.js';
 import { createR2Storage } from './storage/r2.js';
 import { createMemoryStorage } from './storage/memory.js';
 import type { Storage } from './storage/index.js';
+import { enforceSingleAdministrator } from './auth/ownerAccess.js';
 
 const config = loadConfig(process.env);
 
@@ -26,7 +27,9 @@ const storage: Storage = config.R2_ACCOUNT_ID === 'dev' && isDev
   ? createMemoryStorage(config.R2_PUBLIC_BASE_URL)
   : createR2Storage(config);
 
-const app = buildApp({ config, db: createDb(config.DATABASE_URL), mailer, storage });
+const db = createDb(config.DATABASE_URL);
+await enforceSingleAdministrator(db, config.OWNER_ADMIN_EMAIL);
+const app = buildApp({ config, db, mailer, storage });
 
 // Servir os objetos do storage em memória no modo dev, para a capa e as
 // figurinhas aparecerem no app.

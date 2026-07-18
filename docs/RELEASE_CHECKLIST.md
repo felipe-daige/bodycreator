@@ -13,12 +13,13 @@
   - [ ] A figurinha entra com transparência preservada e é arrastável.
 - [ ] Confirmar que “Só copiar a figurinha” permite colar em outro app (ex.: WhatsApp).
 - [ ] Confirmar que favoritos persistem após encerrar e reabrir o app.
-- [ ] Na aba **Gerenciar**, confirmar login, troca de senha obrigatória, criação de
-      pacote, upload pelo app Arquivos, convite e aplicação das permissões de gerente.
+- [ ] Na aba **Configurações**, confirmar a experiência comum sem linguagem de
+      administração, papéis ou permissões.
+- [ ] Entrar com `felipedaige@gmail.com`, confirmar a troca de senha obrigatória e
+      verificar que “Pacotes e figurinhas” aparece somente para essa conta.
+- [ ] Confirmar criação de pacote e upload pelo app Arquivos.
 - [ ] Publicar o catálogo no app, puxar para atualizar a aba Pacotes e confirmar que
       o novo conteúdo continua disponível depois de ficar offline.
-- [ ] Abrir um link `bodycreator://convite?token=...` no iPhone e confirmar que o
-      formulário de aceite aparece dentro do Body Creator.
 - [ ] Confirmar que “Excluir minha conta” anonimiza a conta e encerra a sessão.
 - [ ] Reinstalar o app e confirmar que o onboarding aparece apenas na primeira abertura.
 - [ ] Conferir todos os textos visíveis em pt-BR e testar com tamanho de fonte maior.
@@ -33,10 +34,10 @@
 - [ ] Trocar `API_BASE_URL` de Release em `project.yml` pelo domínio real da API.
 - [ ] Preencher a ficha de privacidade com nome, e-mail e identificador de usuário,
       vinculados à conta e usados somente para funcionalidade administrativa; sem rastreamento.
-- [ ] Fornecer à App Review uma conta administrativa demo válida e instruções para
-      chegar à aba **Gerenciar**.
-- [ ] Publicar política de privacidade e URL de suporte incluindo criação por convite,
-      armazenamento dos dados administrativos e exclusão dentro do app.
+- [ ] Fornecer à App Review a conta proprietária demo e instruções para chegar à
+      aba **Configurações** e entrar na conta.
+- [ ] Publicar política de privacidade e URL de suporte incluindo armazenamento dos
+      dados da conta e exclusão dentro do app.
 - [ ] Preparar screenshots exigidas para os tamanhos de iPhone aceitos pelo App Store Connect.
 - [ ] Preparar subtítulo, descrição, palavras-chave, URL de suporte e política de privacidade em pt-BR.
 - [ ] Definir classificação etária, categoria e direitos autorais das artes.

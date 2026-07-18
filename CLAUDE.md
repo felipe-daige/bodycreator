@@ -9,7 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | Directory | What it is |
 |---|---|
 | `App/ Catalog/ Export/ Favorites/ UI/ Administration/` | iOS app (SwiftUI, iOS 16+, iPhone-only). Consumer catalog plus the native admin area. |
-| `server/` | Backend API (Fastify 5 + Drizzle/Postgres 16, TypeScript). Invites, permissions, sticker upload, versioned catalog publishing to Cloudflare R2. |
+| `server/` | Backend API (Fastify 5 + Drizzle/Postgres 16, TypeScript). Owner-only content management, sticker upload, versioned catalog publishing to Cloudflare R2. |
 | `infra/` | Production: Docker Compose, Caddy, backup scripts. Ops runbook in `docs/OPERACAO.md` (pt-BR). |
 
 Specs live in `docs/superpowers/specs/`: `2026-07-17-figurinhas-stories-design.md` (iOS MVP; read §5b before touching Instagram), `2026-07-18-infoproduto-p1-backend-admin-design.md` (historical P1 API/web design), and `2026-07-18-native-administration-remote-catalog-design.md` (current native-admin decision; supersedes the web panel). Execution ledger: `.superpowers/sdd/progress.md`.
@@ -30,7 +30,7 @@ Internal iOS names are still `Figurinhas` (target, scheme, `Figurinhas.xcodeproj
 ```bash
 docker compose -f infra/docker-compose.dev.yml up -d   # dev DB :54320, test DB :55432 (tmpfs)
 cd server
-npm test              # 175 tests; integration tests need the :55432 container
+npm test              # 178 tests; integration tests need the :55432 container
 npm test -- invites   # filter by file name
 npm run dev           # tsx watch, http://localhost:3000
 npm run db:generate   # after editing src/db/schema.ts — then inspect the SQL in drizzle/
@@ -45,7 +45,7 @@ Beware: a Homebrew Postgres on the host can shadow a dev container on :5432 (hen
 
 Auth: signed cookie carries only the userId; **the user is re-read from the DB on every request** (`requireAuth`), so disabling an account takes effect on the next request. There is deliberately no session table. `mustChangePassword` is enforced server-side in `requireAuth` (allowlist: `/auth/me`, `/auth/change-password`, `/auth/logout`). Account deletion anonymizes the referenced user row instead of breaking audit/content foreign keys.
 
-Permissions: `role` (`admin` | `gerente`) + explicit permission list. `canDo()` (`src/auth/permissions.ts`) refuses `user.manage` for gerente **even if the string is in the DB** — defense at read time. `pack.price` and `report.view` exist but are inert until P3. No public signup: invite-only (32-byte token, stored hashed, single-use, 7 days).
+Owner access: `OWNER_ADMIN_EMAIL` defaults to `felipedaige@gmail.com`. Every management route checks this identity in `requirePermission`; legacy roles/permission arrays remain for database compatibility but never grant management to another e-mail. `enforceSingleAdministrator()` runs before `listen()`, promotes the owner row and demotes/clears every other row. The iOS UI mirrors the same e-mail policy only for presentation; the server remains authoritative.
 
 Audit: `recordAudit()` recursively strips password/token fields from payloads before writing.
 
@@ -55,10 +55,11 @@ Audit: `recordAudit()` recursively strips password/token fields from payloads be
 - Helpers in `tests/setup/app.ts` (`criarELogar`, `criarPackComCategoria`, `criarPackPublicavel`) and `tests/setup/db.ts` (`withTestDb` — migrates once, truncates between cases). Reuse them.
 - Nothing talks to real R2 or sends real e-mail — thin `Storage`/`Mailer` interfaces with in-memory fakes; the real implementations are verified manually in staging.
 
-## Native administration (`Administration/`)
+## Settings and owner content tools (`Administration/`)
 
 - `APIClient` is the only native HTTP boundary. It uses `URLSession`'s cookie store, surfaces the server's pt-BR `{ error }`, and never stores credentials in `UserDefaults`.
-- `AuthStore.can()` only hides controls. **Authorization is the server's** — every hidden control maps to a route protected by `requirePermission`.
+- `SettingsRootView` is a regular-user settings screen. Account role, permissions and administrative language must not be exposed there.
+- `AuthStore.isOwnerAdministrator` reveals content controls only for `OwnerAccess.administratorEmail`. **Authorization is the server's** — every hidden control maps to a route protected by the independent owner-email check.
 - Invitations open `bodycreator://convite?token=...`; keep the URL scheme in `project.yml` and `PUBLIC_APP_INVITE_URL` in server config synchronized.
 - `SelectedPNG` and multipart upload preserve the selected bytes exactly. Do not use `UIImage.pngData()` in the admin upload path.
 

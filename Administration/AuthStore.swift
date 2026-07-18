@@ -70,7 +70,7 @@ final class AuthStore: ObservableObject {
         phase = .signedOut
     }
 
-    func can(_ permission: AdminPermission) -> Bool {
-        user?.can(permission) == true
+    var isOwnerAdministrator: Bool {
+        OwnerAccess.isAdministrator(user?.email)
     }
 }

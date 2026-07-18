@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct AdminAccountView: View {
+struct AccountView: View {
     @EnvironmentObject private var auth: AuthStore
     @State private var showDeleteAccount = false
 
@@ -10,7 +10,6 @@ struct AdminAccountView: View {
                 Section("Conta") {
                     LabeledContent("Nome", value: user.name)
                     LabeledContent("E-mail", value: user.email)
-                    LabeledContent("Papel", value: user.role.label)
                 }
             }
 
@@ -21,7 +20,7 @@ struct AdminAccountView: View {
             }
 
             Section("Excluir conta") {
-                Text("A exclusão remove seus dados pessoais e encerra o acesso administrativo. O histórico operacional permanece sem seu nome ou e-mail.")
+                Text("A exclusão remove seus dados pessoais e encerra o acesso à conta. O histórico técnico permanece sem seu nome ou e-mail.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 Button("Excluir minha conta", role: .destructive) {

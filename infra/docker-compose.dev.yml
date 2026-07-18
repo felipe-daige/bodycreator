@@ -5,7 +5,8 @@ services:
       POSTGRES_USER: bodycreator
       POSTGRES_PASSWORD: bodycreator
       POSTGRES_DB: bodycreator
-    ports: ["5432:5432"]
+    # 54320 no host: um Postgres local (ex.: Homebrew) costuma ocupar a 5432.
+    ports: ["54320:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
   db-test:
     image: postgres:16-alpine

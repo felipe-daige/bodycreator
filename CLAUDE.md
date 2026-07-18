@@ -29,7 +29,7 @@ Internal iOS names are still `Figurinhas` (target, scheme, `Figurinhas.xcodeproj
 ## Server (`server/`)
 
 ```bash
-docker compose -f infra/docker-compose.dev.yml up -d   # dev DB :5432, test DB :55432 (tmpfs)
+docker compose -f infra/docker-compose.dev.yml up -d   # dev DB :54320, test DB :55432 (tmpfs)
 cd server
 npm test              # 170 tests; integration tests need the :55432 container
 npm test -- invites   # filter by file name
@@ -38,7 +38,7 @@ npm run db:generate   # after editing src/db/schema.ts — then inspect the SQL 
 npm run seed:admin    # reads ADMIN_SEED_EMAIL / ADMIN_SEED_PASSWORD from env; idempotent, never overwrites an existing admin's password
 ```
 
-Beware: a Homebrew Postgres on the host can shadow the dev container on :5432; the test container on :55432 is unaffected.
+Beware: a Homebrew Postgres on the host can shadow a dev container on :5432 (hence the 54320 mapping); the test container on :55432 is unaffected.
 
 ### Architecture
 

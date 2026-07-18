@@ -121,11 +121,10 @@ O modelo original ("copiar → abrir a câmera do story → colar manualmente") 
 Implementação: **API oficial "Sharing to Stories"** do Instagram. O app coloca no pasteboard `com.instagram.sharedSticker.backgroundImage` (a foto escolhida, re-encodada em JPEG) + `com.instagram.sharedSticker.stickerImage` (o PNG da figurinha, bytes inalterados para preservar o alfa) e abre `instagram-stories://share?source_application=<FacebookAppID>`.
 
 - **Dependência obrigatória:** Facebook App ID (exigido pela Meta desde jan/2023). Fica em `Export/InstagramSharing.swift`; sem ele o botão avisa que a integração está pendente.
-- **Foto:** selecionada via `PhotosPicker` (sem prompt de permissão, processo isolado). Vai só para o pasteboard local → Instagram; não é armazenada nem enviada a servidor. A label de privacidade "Dados não coletados" permanece válida.
+- **Foto:** o botão "Usar no Instagram" abre um menu com duas origens — **"Tirar foto agora"** (câmera dentro do app, via `UIImagePickerController`; exige `NSCameraUsageDescription`) e **"Escolher da galeria"** (`PhotosPicker`, processo isolado, sem prompt de permissão). Em ambos os casos a foto vai só para o pasteboard local → Instagram; não é armazenada nem enviada a servidor. A label de privacidade "Dados não coletados" permanece válida.
 - **Fallback mantido:** "Só copiar a figurinha" (PNG no pasteboard) para colar manualmente em qualquer app.
 
 ### Débito técnico registrado (fora do MVP)
-- **Tirar a foto dentro do app:** o MVP exige uma foto já existente na galeria. Capturar a foto do paciente pela câmera dentro do Body Creator (e então compor com a figurinha) fica para uma versão futura.
 - **Várias figurinhas numa mesma composição via API:** a API oficial envia uma figurinha por compartilhamento; múltiplas anotações numa só imagem hoje só pelo caminho "Só copiar" + colar repetidamente.
 
 ## 6. Fora do MVP (estrutura já preparada)

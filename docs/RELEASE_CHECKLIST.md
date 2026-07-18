@@ -7,8 +7,10 @@
 - [ ] Fazer uma compilação `Release` e validar o archive no Organizer do Xcode.
 - [ ] Confirmar que `InstagramSharing.facebookAppID` está preenchido (a API oficial de Stories exige; sem ele o Instagram recusa o compartilhamento).
 - [ ] Testar em um iPhone real com o Instagram atualizado:
-  - [ ] “Usar no Instagram” abre o seletor de foto; ao escolher uma foto, o Instagram abre com a foto de fundo e a figurinha por cima, arrastável.
-  - [ ] A figurinha entra com transparência preservada.
+  - [ ] “Usar no Instagram” oferece “Tirar foto agora” e “Escolher da galeria”.
+  - [ ] Pela câmera: o app pede permissão na primeira vez e, após a captura, o Instagram abre com a foto de fundo e a figurinha por cima.
+  - [ ] Pela galeria: mesmo resultado.
+  - [ ] A figurinha entra com transparência preservada e é arrastável.
 - [ ] Confirmar que “Só copiar a figurinha” permite colar em outro app (ex.: WhatsApp).
 - [ ] Confirmar que favoritos persistem após encerrar e reabrir o app.
 - [ ] Reinstalar o app e confirmar que o onboarding aparece apenas na primeira abertura.

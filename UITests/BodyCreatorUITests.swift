@@ -53,6 +53,12 @@ final class BodyCreatorUITests: XCTestCase {
         favoritesScreenshot.name = "Grade de favoritos"
         favoritesScreenshot.lifetime = .keepAlways
         add(favoritesScreenshot)
+
+        // Por último: o menu de origem da foto. Fica no fim porque o "Cancelar"
+        // do confirmationDialog não é exposto como elemento consultável.
+        app.buttons["favorite-sticker-seta-reta"].tap()
+        app.buttons["use-in-instagram"].tap()
+        XCTAssertTrue(app.buttons["Escolher da galeria"].waitForExistence(timeout: 3))
     }
 
     @MainActor

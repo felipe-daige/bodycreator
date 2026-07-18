@@ -44,6 +44,7 @@ targets:
         CFBundleVersion: "1"
         ITSAppUsesNonExemptEncryption: false
         LSApplicationQueriesSchemes: [instagram, instagram-stories]
+        NSCameraUsageDescription: O Body Creator usa a câmera para você fotografar o paciente e enviar a foto com a figurinha direto para o seu story. A foto não é salva nem enviada para nenhum servidor.
         UILaunchScreen:
           UIColorName: AccentColor
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]

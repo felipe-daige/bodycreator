@@ -10,6 +10,9 @@ struct StickerDetailSheet: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
     @State private var pickedPhoto: PhotosPickerItem?
+    @State private var showPhotoSourceDialog = false
+    @State private var showPhotosPicker = false
+    @State private var showCamera = false
     @State private var isPreparingPhoto = false
     @State private var statusMessage: String?
     @State private var showCopiedToast = false
@@ -18,88 +21,85 @@ struct StickerDetailSheet: View {
     private let exporter = StickerExporter()
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                ZStack {
-                    Checkerboard()
-                    StickerImageView(url: imageURL)
-                        .padding(24)
+        VStack(spacing: 14) {
+            ZStack {
+                Checkerboard()
+                StickerImageView(url: imageURL)
+                    .padding(16)
+            }
+            .frame(height: 150)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(alignment: .topTrailing) {
+                Button {
+                    dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(width: 32, height: 32)
+                        .background(.regularMaterial, in: Circle())
                 }
-                .frame(height: 220)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(alignment: .topTrailing) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.body.weight(.semibold))
-                            .frame(width: 36, height: 36)
-                            .background(.regularMaterial, in: Circle())
-                    }
-                    .foregroundStyle(.primary)
-                    .padding(8)
-                    .accessibilityLabel("Fechar")
-                    .accessibilityIdentifier("close-sticker-detail")
-                }
+                .foregroundStyle(.primary)
+                .padding(6)
+                .accessibilityLabel("Fechar")
+                .accessibilityIdentifier("close-sticker-detail")
+            }
 
-                HStack(spacing: 12) {
-                    Text(sticker.name)
-                        .font(.headline)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                    Button {
-                        favorites.toggle(sticker.id)
-                    } label: {
-                        Image(systemName: favorites.isFavorite(sticker.id) ? "heart.fill" : "heart")
-                            .font(.title2)
-                            .foregroundStyle(.pink)
-                            .frame(width: 44, height: 44)
-                    }
-                    .accessibilityLabel(
-                        favorites.isFavorite(sticker.id)
-                            ? "Remover dos favoritos"
-                            : "Adicionar aos favoritos"
-                    )
-                    .accessibilityIdentifier("favorite-toggle")
-                }
-
-                PhotosPicker(selection: $pickedPhoto, matching: .images, photoLibrary: .shared()) {
-                    Label(
-                        isPreparingPhoto ? "Preparando…" : "Usar no Instagram",
-                        systemImage: "photo.on.rectangle.angled"
-                    )
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(isPreparingPhoto)
-                .accessibilityIdentifier("use-in-instagram")
-
-                Text("Escolha uma foto já tirada do paciente. O Instagram abre com a foto de fundo e a figurinha por cima, pronta para você arrastar e posicionar.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+            HStack(spacing: 12) {
+                Text(sticker.name)
+                    .font(.headline)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 Button {
-                    handle(exporter.copyOnly(imageAt: imageURL))
+                    favorites.toggle(sticker.id)
                 } label: {
-                    Label("Só copiar a figurinha", systemImage: "doc.on.clipboard")
-                        .frame(maxWidth: .infinity)
+                    Image(systemName: favorites.isFavorite(sticker.id) ? "heart.fill" : "heart")
+                        .font(.title3)
+                        .foregroundStyle(.pink)
+                        .frame(width: 40, height: 40)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .accessibilityIdentifier("copy-only")
-
-                if let statusMessage {
-                    Text(statusMessage)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .transition(.opacity)
-                }
+                .accessibilityLabel(
+                    favorites.isFavorite(sticker.id)
+                        ? "Remover dos favoritos"
+                        : "Adicionar aos favoritos"
+                )
+                .accessibilityIdentifier("favorite-toggle")
             }
-            .padding()
+
+            Button {
+                showPhotoSourceDialog = true
+            } label: {
+                Label(
+                    isPreparingPhoto ? "Preparando…" : "Usar no Instagram",
+                    systemImage: "photo.on.rectangle.angled"
+                )
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(isPreparingPhoto)
+            .accessibilityIdentifier("use-in-instagram")
+
+            Button {
+                handle(exporter.copyOnly(imageAt: imageURL))
+            } label: {
+                Label("Só copiar a figurinha", systemImage: "doc.on.clipboard")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .accessibilityIdentifier("copy-only")
+
+            Text(statusMessage ?? "Escolha a foto do paciente: o Instagram abre com ela de fundo e a figurinha por cima.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity)
+
+            Spacer(minLength: 0)
         }
+        .padding(20)
         .overlay(alignment: .top) {
             if showCopiedToast {
                 Label("Copiado!", systemImage: "checkmark.circle.fill")
@@ -108,7 +108,7 @@ struct StickerDetailSheet: View {
                     .padding(.horizontal, 18)
                     .padding(.vertical, 11)
                     .background(Color.green, in: Capsule())
-                    .padding(.top, 10)
+                    .padding(.top, 8)
                     .shadow(radius: 8, y: 2)
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .accessibilityIdentifier("copied-toast")
@@ -116,9 +116,23 @@ struct StickerDetailSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        .confirmationDialog("Foto do paciente", isPresented: $showPhotoSourceDialog, titleVisibility: .visible) {
+            if CameraPicker.isAvailable {
+                Button("Tirar foto agora") { showCamera = true }
+            }
+            Button("Escolher da galeria") { showPhotosPicker = true }
+            Button("Cancelar", role: .cancel) {}
+        }
+        .photosPicker(isPresented: $showPhotosPicker, selection: $pickedPhoto, matching: .images)
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraPicker { image in
+                share(photo: image)
+            }
+            .ignoresSafeArea()
+        }
         .onChange(of: pickedPhoto) { item in
             guard let item else { return }
-            prepareAndShare(item)
+            loadFromLibrary(item)
         }
         .alert(
             "Instale o Instagram para usar as figurinhas",
@@ -133,7 +147,7 @@ struct StickerDetailSheet: View {
         }
     }
 
-    private func prepareAndShare(_ item: PhotosPickerItem) {
+    private func loadFromLibrary(_ item: PhotosPickerItem) {
         isPreparingPhoto = true
         Task {
             defer {
@@ -142,17 +156,25 @@ struct StickerDetailSheet: View {
             }
             guard
                 let data = try? await item.loadTransferable(type: Data.self),
-                let jpeg = UIImage(data: data)?.jpegData(compressionQuality: 0.9)
+                let image = UIImage(data: data)
             else {
                 handle(.copyFailed)
                 return
             }
-            handle(exporter.shareToInstagramStories(
-                stickerAt: imageURL,
-                backgroundImage: jpeg,
-                facebookAppID: InstagramSharing.facebookAppID
-            ))
+            share(photo: image)
         }
+    }
+
+    private func share(photo: UIImage) {
+        guard let jpeg = photo.jpegData(compressionQuality: 0.9) else {
+            handle(.copyFailed)
+            return
+        }
+        handle(exporter.shareToInstagramStories(
+            stickerAt: imageURL,
+            backgroundImage: jpeg,
+            facebookAppID: InstagramSharing.facebookAppID
+        ))
     }
 
     private func handle(_ outcome: ExportOutcome) {
@@ -160,7 +182,7 @@ struct StickerDetailSheet: View {
         case .openedInstagramStories:
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             withAnimation {
-                statusMessage = "No Instagram, arraste a figurinha para posicionar sobre a foto e publique."
+                statusMessage = "No Instagram, arraste a figurinha para posicionar e publique."
             }
         case .copiedOnly:
             confirmCopied(nextStep: "Agora é só colar onde quiser: toque e segure e escolha Colar.")

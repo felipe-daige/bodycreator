@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct StickerDetailSheet: View {
     let sticker: Sticker
@@ -8,6 +9,7 @@ struct StickerDetailSheet: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
     @State private var statusMessage: String?
+    @State private var showCopiedToast = false
     @State private var showInstagramMissingAlert = false
 
     private let exporter = StickerExporter()
@@ -88,6 +90,20 @@ struct StickerDetailSheet: View {
             }
             .padding()
         }
+        .overlay(alignment: .top) {
+            if showCopiedToast {
+                Label("Copiado!", systemImage: "checkmark.circle.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 11)
+                    .background(Color.green, in: Capsule())
+                    .padding(.top, 10)
+                    .shadow(radius: 8, y: 2)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .accessibilityIdentifier("copied-toast")
+            }
+        }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .alert(
@@ -104,17 +120,33 @@ struct StickerDetailSheet: View {
     }
 
     private func handle(_ outcome: ExportOutcome) {
-        withAnimation {
-            switch outcome {
-            case .copiedAndOpenedInstagram:
-                statusMessage = "Copiado! Toque e segure na tela do story e cole."
-            case .copiedOnly:
-                statusMessage = "Copiado! Agora é só colar onde quiser."
-            case .instagramNotInstalled:
-                showInstagramMissingAlert = true
-            case .copyFailed:
-                statusMessage = "Não foi possível copiar. Tente de novo."
-            }
+        switch outcome {
+        case .copiedAndOpenedInstagram:
+            confirmCopied(nextStep: "No story, toque e segure na tela e escolha Colar para trazer a figurinha.")
+        case .copiedOnly:
+            confirmCopied(nextStep: "Agora é só colar onde quiser: toque e segure e escolha Colar.")
+        case .instagramNotInstalled:
+            notifyFailure()
+            showInstagramMissingAlert = true
+        case .copyFailed:
+            notifyFailure()
+            withAnimation { statusMessage = "Não foi possível copiar. Tente de novo." }
         }
+    }
+
+    private func confirmCopied(nextStep: String) {
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        withAnimation {
+            statusMessage = nextStep
+            showCopiedToast = true
+        }
+        Task {
+            try? await Task.sleep(nanoseconds: 1_700_000_000)
+            withAnimation { showCopiedToast = false }
+        }
+    }
+
+    private func notifyFailure() {
+        UINotificationFeedbackGenerator().notificationOccurred(.error)
     }
 }

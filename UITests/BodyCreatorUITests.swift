@@ -26,7 +26,8 @@ final class BodyCreatorUITests: XCTestCase {
         XCTAssertTrue(copyOnlyButton.waitForExistence(timeout: 5))
         copyOnlyButton.tap()
         XCTAssertTrue(
-            app.staticTexts["Copiado! Agora é só colar onde quiser."].waitForExistence(timeout: 3)
+            app.staticTexts["Agora é só colar onde quiser: toque e segure e escolha Colar."]
+                .waitForExistence(timeout: 3)
         )
 
         app.buttons["copy-and-open-instagram"].tap()

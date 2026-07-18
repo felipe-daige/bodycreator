@@ -44,7 +44,8 @@ targets:
         CFBundleVersion: "1"
         ITSAppUsesNonExemptEncryption: false
         LSApplicationQueriesSchemes: [instagram]
-        UILaunchScreen: {}
+        UILaunchScreen:
+          UIColorName: AccentColor
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
   FigurinhasTests:
     type: bundle.unit-test

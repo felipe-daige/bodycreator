@@ -5,6 +5,7 @@ import { withTestDb } from '../setup/db.js';
 import { buildApp } from '../../src/app.js';
 import { loadConfig } from '../../src/config.js';
 import { hashPassword } from '../../src/auth/password.js';
+import { createFakeMailer } from '../../src/email/send.js';
 import { users } from '../../src/db/schema.js';
 
 const t = withTestDb();
@@ -21,7 +22,7 @@ const config = loadConfig({
 });
 
 beforeEach(async () => {
-  app = buildApp({ config, db: t.db });
+  app = buildApp({ config, db: t.db, mailer: createFakeMailer() });
   await app.ready();
 });
 

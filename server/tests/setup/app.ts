@@ -1,9 +1,8 @@
 import type { FastifyInstance } from 'fastify';
-import { eq } from 'drizzle-orm';
 import FormData from 'form-data';
 import { loadConfig, type Config } from '../../src/config.js';
 import { hashPassword } from '../../src/auth/password.js';
-import { users, packs } from '../../src/db/schema.js';
+import { users } from '../../src/db/schema.js';
 import type { Db } from '../../src/db/index.js';
 import { pngComAlfa } from '../fixtures/make-fixtures.js';
 
@@ -56,33 +55,48 @@ export function criarPackComCategoriaComApp(getApp: () => FastifyInstance) {
   };
 }
 
-// O patchSchema de packs.ts (Task 11) aceita só name/description/sortOrder —
-// não status. Este task (12) não mexe em packs.ts: o Files do brief lista
-// apenas manifest.ts e publish.ts, e nenhum outro task do plano (nem o
-// painel do Task 14) adiciona uma transição de status de pacote pela rota.
-// Marcar published fica direto no banco, só para montar o fixture de teste.
+// Task 12 deixou um gap: nenhuma rota levava um pacote de draft a published,
+// então este helper escrevia o status direto no banco. Task 12b fecha esse
+// gap com POST /packs/:id/publish (que exige figurinha + capa) e
+// POST /packs/:id/cover. O helper agora sobe a capa e publica pela rota de
+// verdade, então o pacote que ele produz é publicável de ponta a ponta, não
+// só um estado forjado no banco.
 export function criarPackPublicavelComApp(db: Db, getApp: () => FastifyInstance) {
   const criarPackComCategoria = criarPackComCategoriaComApp(getApp);
   return async function criarPackPublicavel(cookie: string, slug?: string) {
     const { packId, categoryId } = await criarPackComCategoria(cookie, slug);
 
     const stickerId = `figurinha-${Math.random().toString(36).slice(2)}`;
-    const form = new FormData();
-    form.append('id', stickerId);
-    form.append('name', 'Figurinha de teste');
-    form.append('categoryId', categoryId);
-    form.append('tags', JSON.stringify(['teste']));
-    form.append('file', await pngComAlfa(), { filename: `${stickerId}.png`, contentType: 'image/png' });
+    const stickerForm = new FormData();
+    stickerForm.append('id', stickerId);
+    stickerForm.append('name', 'Figurinha de teste');
+    stickerForm.append('categoryId', categoryId);
+    stickerForm.append('tags', JSON.stringify(['teste']));
+    stickerForm.append('file', await pngComAlfa(), { filename: `${stickerId}.png`, contentType: 'image/png' });
     const stickerRes = await getApp().inject({
       method: 'POST', url: `/packs/${packId}/stickers`,
-      headers: { cookie, ...form.getHeaders() }, payload: form.getBuffer(),
+      headers: { cookie, ...stickerForm.getHeaders() }, payload: stickerForm.getBuffer(),
     });
     if (stickerRes.statusCode !== 201) {
       throw new Error(`Falha ao preparar figurinha do pacote publicável: ${stickerRes.body}`);
     }
 
-    await db.update(packs).set({ status: 'published', publishedAt: new Date() })
-      .where(eq(packs.id, packId));
+    const coverForm = new FormData();
+    coverForm.append('file', await pngComAlfa(), { filename: 'cover.png', contentType: 'image/png' });
+    const coverRes = await getApp().inject({
+      method: 'POST', url: `/packs/${packId}/cover`,
+      headers: { cookie, ...coverForm.getHeaders() }, payload: coverForm.getBuffer(),
+    });
+    if (coverRes.statusCode !== 200) {
+      throw new Error(`Falha ao preparar capa do pacote publicável: ${coverRes.body}`);
+    }
+
+    const publishRes = await getApp().inject({
+      method: 'POST', url: `/packs/${packId}/publish`, headers: { cookie },
+    });
+    if (publishRes.statusCode !== 200) {
+      throw new Error(`Falha ao publicar pacote publicável: ${publishRes.body}`);
+    }
 
     return { packId, categoryId, stickerId };
   };

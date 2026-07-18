@@ -14,7 +14,7 @@ export type ManifestInput = {
 export type Manifest = {
   version: number;
   packs: Array<{
-    id: string; name: string; cover: string | null; free: boolean;
+    id: string; name: string; cover: string; free: boolean;
     categories: Array<{
       id: string; name: string;
       stickers: Array<{ id: string; name: string; tags: string[]; file: string }>;
@@ -25,7 +25,16 @@ export type Manifest = {
 // Mantém o formato de Content/manifest.json do MVP: o P2 troca a fonte sem
 // reescrever os modelos do módulo Catalog no app.
 export function buildManifest(input: ManifestInput, version: number): Manifest {
-  const packs = input.packs.map((pack) => {
+  // Defesa em profundidade: a rota de publish (packs.ts) já recusa publicar
+  // um pacote sem capa, mas um estado ruim gravado direto no banco não pode
+  // produzir um manifesto com `cover: null` — o modelo Swift StickerPack
+  // declara `let cover: String`, não opcional, e um null ali quebra a
+  // decodificação do catálogo inteiro no app.
+  const comCapa = input.packs.filter(
+    (pack): pack is typeof pack & { coverKey: string } => pack.coverKey !== null,
+  );
+
+  const packs = comCapa.map((pack) => {
     const categories = [...pack.categories]
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((cat) => ({

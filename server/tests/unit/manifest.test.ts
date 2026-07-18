@@ -42,4 +42,16 @@ describe('buildManifest', () => {
     const m = buildManifest({ packs: [{ ...input.packs[0]!, stickers: [] }] }, 1);
     expect(m.packs).toHaveLength(0);
   });
+
+  it('omite pacote cujo coverKey é nulo', () => {
+    const m = buildManifest({ packs: [{ ...input.packs[0]!, coverKey: null }] }, 1);
+    expect(m.packs).toHaveLength(0);
+  });
+
+  it('pacote completo aparece no manifesto com cover preenchido, nunca null', () => {
+    const m = buildManifest(input, 1);
+    expect(m.packs).toHaveLength(1);
+    expect(m.packs[0]!.cover).toBe('packs/harmonizacao/cover.png');
+    expect(typeof m.packs[0]!.cover).toBe('string');
+  });
 });

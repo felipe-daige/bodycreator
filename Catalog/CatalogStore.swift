@@ -3,14 +3,22 @@ import Foundation
 @MainActor
 final class CatalogStore: ObservableObject {
     @Published private(set) var packs: [StickerPack] = []
+    @Published private(set) var isRefreshing = false
+    @Published private(set) var refreshMessage: String?
     private let loader: ManifestLoader
+    private let remote: RemoteCatalogRepository?
+    private var remoteSnapshot: RemoteCatalogSnapshot?
 
-    init(loader: ManifestLoader) {
+    init(loader: ManifestLoader, remote: RemoteCatalogRepository? = nil) {
         self.loader = loader
-        load()
+        self.remote = remote
+        loadBundled()
+        if let snapshot = remote?.cachedSnapshot() {
+            apply(snapshot)
+        }
     }
 
-    private func load() {
+    private func loadBundled() {
         guard let manifest = try? loader.load() else {
             packs = []
             return
@@ -28,12 +36,50 @@ final class CatalogStore: ObservableObject {
         }
     }
 
+    func refresh() async {
+        guard let remote else { return }
+        isRefreshing = true
+        refreshMessage = nil
+        defer { isRefreshing = false }
+        do {
+            let snapshot = try await remote.refresh()
+            apply(snapshot)
+        } catch {
+            // Bundle/cache permanecem ativos. A mensagem é informativa e uma
+            // falha de rede nunca esvazia a biblioteca que já funciona.
+            refreshMessage = error.localizedDescription
+        }
+    }
+
+    private func apply(_ snapshot: RemoteCatalogSnapshot) {
+        remoteSnapshot = snapshot
+        packs = snapshot.manifest.packs
+    }
+
     func imageURL(for sticker: Sticker) -> URL {
-        loader.imageURL(forFile: sticker.file)
+        if let snapshot = remoteSnapshot, let remote {
+            let url = remote.remoteURL(for: sticker.file, snapshot: snapshot)
+            return remote.cachedAssetURL(for: url) ?? url
+        }
+        return loader.imageURL(forFile: sticker.file)
     }
 
     func coverURL(for pack: StickerPack) -> URL {
-        loader.imageURL(forFile: pack.cover)
+        if let snapshot = remoteSnapshot, let remote {
+            let url = remote.remoteURL(for: pack.cover, snapshot: snapshot)
+            return remote.cachedAssetURL(for: url) ?? url
+        }
+        return loader.imageURL(forFile: pack.cover)
+    }
+
+    func localImageURL(for sticker: Sticker) async throws -> URL {
+        try await localAssetURL(for: imageURL(for: sticker))
+    }
+
+    func localAssetURL(for url: URL) async throws -> URL {
+        if url.isFileURL { return url }
+        guard let remote else { throw RemoteCatalogError.invalidAsset }
+        return try await remote.localAssetURL(for: url)
     }
 
     func stickers(withIDs ids: Set<String>) -> [Sticker] {

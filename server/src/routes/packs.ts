@@ -96,7 +96,7 @@ export async function packRoutes(app: FastifyInstance) {
 
   // Nenhuma outra rota do sistema transiciona um pacote de draft para
   // published — o manifesto (buildManifest) só inclui pacotes published, e
-  // publicar um pacote vazio ou sem capa sempre seria engano do painel.
+  // publicar um pacote vazio ou sem capa sempre seria engano no app.
   // Mais barato bloquear aqui do que descobrir isso no app.
   app.post('/packs/:id/publish', {
     preHandler: [requireAuth, requirePermission('pack.publish')],

@@ -57,7 +57,7 @@ export async function userRoutes(app: FastifyInstance) {
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
     if (id === request.currentUser!.id) {
-      // Sem isto, o único admin consegue se trancar para fora do painel.
+      // Sem isto, o único admin consegue se trancar para fora do app.
       return reply.code(400).send({ error: 'Você não pode desativar a própria conta.' });
     }
     const [alvo] = await db.select().from(users).where(eq(users.id, id)).limit(1);

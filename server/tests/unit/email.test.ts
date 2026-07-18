@@ -4,11 +4,11 @@ import { createFakeMailer, renderInviteEmail } from '../../src/email/send.js';
 describe('renderInviteEmail', () => {
   it('inclui o link do convite no html e no texto', () => {
     const msg = renderInviteEmail({
-      inviteUrl: 'https://painel.exemplo.com/convite?token=abc',
+      inviteUrl: 'bodycreator://convite?token=abc',
       invitedByName: 'Maiara',
     });
-    expect(msg.html).toContain('https://painel.exemplo.com/convite?token=abc');
-    expect(msg.text).toContain('https://painel.exemplo.com/convite?token=abc');
+    expect(msg.html).toContain('bodycreator://convite?token=abc');
+    expect(msg.text).toContain('bodycreator://convite?token=abc');
   });
 
   it('está em português e diz quem convidou', () => {

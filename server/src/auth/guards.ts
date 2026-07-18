@@ -36,7 +36,7 @@ export async function requireAuth(request: FastifyRequest, reply: FastifyReply) 
   };
 
   // A senha semeada é tratada como comprometida (spec) — o React já bloqueia
-  // a navegação, mas isso é só UX. Sem esta checagem aqui, a conta continua
+  // a navegação nativa, mas isso é só UX. Sem esta checagem aqui, a conta continua
   // plenamente utilizável para sempre via chamada direta à API.
   if (user.mustChangePassword) {
     const routeUrl = request.routeOptions.url ?? request.url.split('?')[0] ?? request.url;

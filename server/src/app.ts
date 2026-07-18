@@ -1,7 +1,6 @@
 import { STATUS_CODES } from 'node:http';
 import Fastify, { type FastifyInstance, type FastifyError } from 'fastify';
 import cookie from '@fastify/cookie';
-import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import multipart from '@fastify/multipart';
 import type { Config } from './config.js';
@@ -15,6 +14,7 @@ import { userRoutes } from './routes/users.js';
 import { packRoutes } from './routes/packs.js';
 import { stickerRoutes } from './routes/stickers.js';
 import { publishRoutes } from './routes/publish.js';
+import { catalogRoutes } from './routes/catalog.js';
 
 export type AppDeps = { config: Config; db: Db; mailer: Mailer; storage: Storage };
 
@@ -31,7 +31,6 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   app.decorate('deps', deps);
 
   app.register(cookie, { secret: deps.config.SESSION_SECRET });
-  app.register(cors, { origin: deps.config.PUBLIC_PANEL_ORIGIN, credentials: true });
   app.register(rateLimit, { global: false });
   app.register(multipart, { limits: { fileSize: 2 * 1024 * 1024, files: 1 } });
 
@@ -65,6 +64,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   app.register(packRoutes);
   app.register(stickerRoutes);
   app.register(publishRoutes);
+  app.register(catalogRoutes);
   return app;
 }
 

@@ -4,6 +4,11 @@
 **Status:** Aprovado em brainstorm, aguardando revisão do spec
 **Escopo deste documento:** sub-projeto P1. Os sub-projetos P2–P4 aparecem só como contexto.
 
+> **Decisão posterior:** a escolha do proprietário passou a ser administração
+> exclusivamente nativa no app. A API e o modelo de permissões deste documento
+> permanecem; as seções sobre painel React foram substituídas por
+> `2026-07-18-native-administration-remote-catalog-design.md`.
+
 ## 1. Contexto
 
 O MVP do Body Creator (branch `figurinhas-mvp`) é um app offline: conteúdo compilado no binário, sem contas, sem rede, rótulo de privacidade "Dados Não Coletados". O motor figurinha → Instagram está pronto e testado.

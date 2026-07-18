@@ -1,37 +1,21 @@
-# Operação — Body Creator (backend + painel) em produção
+# Operação — Body Creator API em produção
 
-Este documento descreve como colocar o backend (`server/`) e o painel administrativo
-(`admin/`) no ar num VPS, e como operar esse ambiente depois. Não contém nenhuma
-credencial real — todo valor de exemplo abaixo é placeholder e precisa ser substituído.
+Este documento descreve como colocar o backend (`server/`) no ar num VPS e operar
+esse ambiente. A administração vive no app iOS; não existe painel web em produção.
+Não há credenciais reais aqui — todo valor de exemplo precisa ser substituído.
 
 ## Arquitetura em produção
 
-Um único VPS roda quatro containers via `infra/docker-compose.yml`:
+Um único VPS roda três containers via `infra/docker-compose.yml`:
 
 - **`db`** — Postgres 16, dado persistido no volume `pgdata`.
 - **`api`** — a API Fastify (`server/`), imagem `ghcr.io/<repo>/api`.
-- **`admin`** — não fica no ar: só copia os arquivos estáticos do painel (já
-  compilados na própria imagem) para o volume `admin_dist` e encerra. Ver nota no
-  final desta seção.
-- **`caddy`** — único ponto de entrada HTTP(S) público. Serve o painel (arquivos
-  estáticos do volume `admin_dist`) e faz proxy reverso de `/api/*` para a `api`,
-  tudo sob **o mesmo domínio**. TLS é automático (Let's Encrypt via Caddy).
+- **`caddy`** — único ponto de entrada HTTP(S) público. Faz proxy reverso do
+  domínio da API para `api:3000`; TLS é automático (Let's Encrypt via Caddy).
 
-Painel e API sob o mesmo domínio (API em `/api`) é uma decisão deliberada: mantém o
-cookie de sessão same-site e evita toda a categoria de bug de cookie entre domínios.
-**Não separe isso em dois domínios.**
-
-### Por que o serviço `admin` não fica rodando
-
-Ele copia os estáticos para o volume `admin_dist` e sai com código 0
-(`restart: "no"`). O Caddy só sobe depois que o `admin` **termina com sucesso**
-(`depends_on: admin: condition: service_completed_successfully`), então nunca serve
-um `/srv` vazio na primeira subida. Em deploys seguintes, se a imagem do `admin`
-mudou, o Compose recria só esse container; ele recopia os arquivos novos para o
-mesmo volume, e o Caddy — que já está rodando e só lê do volume a cada request —
-passa a servir a versão nova sem precisar reiniciar. Um `docker compose up -d`
-repetido é seguro: se nada mudou, ele só reinicia um container já parado (a cópia
-roda de novo, é idempotente).
+O app usa cookie `httpOnly` na própria sessão nativa do `URLSession`. A API e o
+CDN/R2 podem ter domínios diferentes: a autenticação só viaja para a API, enquanto
+manifestos e PNGs publicados são públicos no CDN.
 
 ## Pré-requisitos
 
@@ -135,8 +119,10 @@ Pontos de atenção ao preencher (documentados também nos comentários do próp
   (`usuario/bodycreator`) — é como o GHCR nomeia as imagens.
 - `SESSION_SECRET` precisa de 32+ caracteres aleatórios. Gere com
   `openssl rand -base64 32` — nunca reaproveite um valor de exemplo.
-- `PUBLIC_PANEL_ORIGIN` é a URL pública completa (`https://painel.seudominio...`),
-  usada pela API para validar CORS.
+- `API_DOMAIN` é o host público usado pelo app (o mesmo configurado como
+  `API_BASE_URL` de Release em `project.yml`).
+- `PUBLIC_APP_INVITE_URL` deve permanecer `bodycreator://convite`; é o link que
+  abre a tela nativa de aceite de convite.
 - `DATABASE_URL` **repete** o usuário/senha/banco de `POSTGRES_USER` /
   `POSTGRES_PASSWORD` / `POSTGRES_DB` por extenso — `env_file` não expande
   `${VAR}` referenciando outra variável do mesmo arquivo, então não dá pra
@@ -185,7 +171,7 @@ autenticar no GHCR ao publicar as imagens.
 
 Com o DNS já resolvendo para o VPS e os secrets configurados, um `git push` na
 `main` (ou "Run workflow" manual em `deploy.yml`) já é suficiente: o workflow
-constrói as duas imagens, publica no GHCR, copia `docker-compose.yml`/`Caddyfile`
+constrói a imagem da API, publica no GHCR, copia `docker-compose.yml`/`Caddyfile`
 atualizados para o servidor e roda `pull` → migração → `up -d` lá.
 
 Se preferir validar manualmente antes de depender do Actions, rode direto no
@@ -212,7 +198,7 @@ docker compose run --rm \
 ```
 
 A senha só existe nesse comando, digitada na hora — não fica em nenhum arquivo.
-Depois do primeiro login, o próprio painel força a troca de senha
+Depois do primeiro login, o próprio app força a troca de senha
 (`mustChangePassword`).
 
 ---
@@ -221,7 +207,7 @@ Depois do primeiro login, o próprio painel força a troca de senha
 
 ### Deploy contínuo
 
-Todo push na `main` dispara `deploy.yml`: build + push das duas imagens no GHCR
+Todo push na `main` dispara `deploy.yml`: build + push da imagem da API no GHCR
 (tags `:latest` e `:<sha do commit>`), sincronização de `docker-compose.yml` e
 `Caddyfile` com o servidor, depois `pull` → migração → `up -d` → `restart caddy`
 (para o Caddy sempre reler o `Caddyfile`, caso ele tenha mudado) → `docker image
@@ -230,7 +216,7 @@ continua no ar — a versão nova nunca fica exposta com um esquema incompatíve
 
 ### Rollback
 
-Cada imagem também é publicada com a tag do commit (`ghcr.io/<repo>/api:<sha>`).
+A imagem também é publicada com a tag do commit (`ghcr.io/<repo>/api:<sha>`).
 Para voltar a uma versão anterior:
 
 ```bash
@@ -253,7 +239,7 @@ docker compose ps                 # estado de cada container
 docker compose logs -f api        # logs da API em tempo real
 docker compose logs -f caddy      # logs do proxy/TLS
 docker compose exec db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"   # acesso ao banco
-curl -s https://<domínio>/api/health   # healthcheck público
+curl -s https://<domínio-da-api>/health   # healthcheck público
 ```
 
 ---
@@ -397,7 +383,7 @@ ficou de fora do backup do dia.
 1. Siga a seção **"Provisionamento do zero"** deste documento, do passo 1 ao passo
    8 — isso deixa um VPS novo com Docker, `/opt/bodycreator`, `.env` preenchido
    (**as mesmas credenciais de R2 do servidor antigo** — elas não se perdem junto
-   com o VPS, moram no provedor de object storage) e a API/painel no ar com um
+   com o VPS, moram no provedor de object storage) e a API no ar com um
    banco **vazio**.
 2. Instale o AWS CLI no servidor novo (seção acima).
 3. Restaure o backup mais recente do R2 seguindo **"Restauração manual"** acima —
@@ -405,7 +391,7 @@ ficou de fora do backup do dia.
    API" se aplica normalmente).
 4. Rode `restore-check.sh` uma vez à mão para confirmar, de forma independente da
    restauração que acabou de fazer, que o banco novo tem o formato esperado.
-5. Confirme login no painel com um usuário que existia antes do desastre — é a
+5. Confirme login na aba **Gerenciar** do app com um usuário que existia antes do desastre — é a
    prova final de que os dados voltaram, não só o esquema.
 6. Reagende o cron (seção "Agendar" acima) no servidor novo — ele não veio junto
    na reconstrução do zero.
@@ -430,7 +416,7 @@ rodando fora da infraestrutura que ele está observando.
 
 1. Criar conta num serviço gratuito de monitoramento externo (ex.: UptimeRobot,
    Better Uptime, Freshping).
-2. Cadastrar um monitor HTTP(S) apontando para `https://<domínio>/api/health`,
+2. Cadastrar um monitor HTTP(S) apontando para `https://<domínio-da-api>/health`,
    esperando `200` com corpo `{"status":"ok"}`.
 3. Configurar alerta por e-mail (ou outro canal) para quando o monitor detectar
    indisponibilidade.

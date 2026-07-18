@@ -62,6 +62,48 @@ final class BodyCreatorUITests: XCTestCase {
     }
 
     @MainActor
+    func testAdministrationLivesInsideTheApp() throws {
+        let app = XCUIApplication()
+        app.launch()
+        finishOnboardingIfNeeded(in: app)
+
+        app.tabBars.buttons["Gerenciar"].tap()
+
+        XCTAssertTrue(app.navigationBars["Gerenciar"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Área administrativa"].exists)
+        XCTAssertTrue(app.textFields["admin-email"].exists)
+        XCTAssertTrue(app.secureTextFields["admin-password"].exists)
+        XCTAssertTrue(app.buttons["admin-login"].exists)
+    }
+
+    @MainActor
+    func testLiveAdminLoginWhenCredentialsAreProvided() throws {
+        let environment = ProcessInfo.processInfo.environment
+        guard let email = environment["E2E_ADMIN_EMAIL"],
+              let password = environment["E2E_ADMIN_PASSWORD"] else {
+            throw XCTSkip("Credenciais locais não fornecidas.")
+        }
+
+        let app = XCUIApplication()
+        app.launchEnvironment["BODYCREATOR_API_URL"] =
+            environment["E2E_API_URL"] ?? "http://127.0.0.1:3000"
+        app.launch()
+        finishOnboardingIfNeeded(in: app)
+        app.tabBars.buttons["Gerenciar"].tap()
+
+        let emailField = app.textFields["admin-email"]
+        XCTAssertTrue(emailField.waitForExistence(timeout: 5))
+        emailField.tap()
+        emailField.typeText(email)
+        let passwordField = app.secureTextFields["admin-password"]
+        passwordField.tap()
+        passwordField.typeText(password)
+        app.buttons["admin-login"].tap()
+
+        XCTAssertTrue(app.staticTexts["Troque sua senha"].waitForExistence(timeout: 8))
+    }
+
+    @MainActor
     private func finishOnboardingIfNeeded(in app: XCUIApplication) {
         guard app.staticTexts["Body Creator"].waitForExistence(timeout: 2) else {
             return

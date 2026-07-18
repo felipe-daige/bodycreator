@@ -8,6 +8,7 @@ struct StickerDetailSheet: View {
     let imageURL: URL
 
     @EnvironmentObject private var favorites: FavoritesStore
+    @EnvironmentObject private var catalog: CatalogStore
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
     @State private var pickedPhoto: PhotosPickerItem?
@@ -99,7 +100,7 @@ struct StickerDetailSheet: View {
             }
 
             Button {
-                handle(exporter.copyOnly(imageAt: imageURL))
+                copySticker()
             } label: {
                 Label("Só copiar a figurinha", systemImage: "doc.on.clipboard")
                     .frame(maxWidth: .infinity)
@@ -199,20 +200,41 @@ struct StickerDetailSheet: View {
                 handle(.copyFailed)
                 return
             }
-            share(photo: image)
+            await performShare(photo: image)
         }
     }
 
     private func share(photo: UIImage) {
-        guard let jpeg = photo.jpegData(compressionQuality: 0.9) else {
+        isPreparingPhoto = true
+        Task {
+            defer { isPreparingPhoto = false }
+            await performShare(photo: photo)
+        }
+    }
+
+    private func performShare(photo: UIImage) async {
+        guard let jpeg = photo.jpegData(compressionQuality: 0.9),
+              let localURL = try? await catalog.localImageURL(for: sticker) else {
             handle(.copyFailed)
             return
         }
         handle(exporter.shareToInstagramStories(
-            stickerAt: imageURL,
+            stickerAt: localURL,
             backgroundImage: jpeg,
             facebookAppID: InstagramSharing.facebookAppID
         ))
+    }
+
+    private func copySticker() {
+        isPreparingPhoto = true
+        Task {
+            defer { isPreparingPhoto = false }
+            guard let localURL = try? await catalog.localImageURL(for: sticker) else {
+                handle(.copyFailed)
+                return
+            }
+            handle(exporter.copyOnly(imageAt: localURL))
+        }
     }
 
     private func handle(_ outcome: ExportOutcome) {

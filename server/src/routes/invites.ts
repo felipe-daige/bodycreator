@@ -29,6 +29,12 @@ function hashToken(token: string) {
   return createHash('sha256').update(token).digest('hex');
 }
 
+function inviteUrl(base: string, token: string) {
+  const url = new URL(base);
+  url.searchParams.set('token', token);
+  return url.toString();
+}
+
 export async function inviteRoutes(app: FastifyInstance) {
   const { db, config, mailer } = app.deps;
 
@@ -67,8 +73,8 @@ export async function inviteRoutes(app: FastifyInstance) {
       invitedBy: request.currentUser!.id, expiresAt,
     }).returning();
 
-    const inviteUrl = `${config.PUBLIC_PANEL_ORIGIN}/convite?token=${token}`;
-    const msg = renderInviteEmail({ inviteUrl, invitedByName: request.currentUser!.name });
+    const url = inviteUrl(config.PUBLIC_APP_INVITE_URL, token);
+    const msg = renderInviteEmail({ inviteUrl: url, invitedByName: request.currentUser!.name });
     await mailer.send({ to: lower, ...msg });
 
     await recordAudit(db, {
@@ -92,10 +98,10 @@ export async function inviteRoutes(app: FastifyInstance) {
     await db.update(invites).set({ tokenHash: hashToken(token), expiresAt })
       .where(eq(invites.id, id));
 
-    const inviteUrl = `${config.PUBLIC_PANEL_ORIGIN}/convite?token=${token}`;
+    const url = inviteUrl(config.PUBLIC_APP_INVITE_URL, token);
     await mailer.send({
       to: invite.email,
-      ...renderInviteEmail({ inviteUrl, invitedByName: request.currentUser!.name }),
+      ...renderInviteEmail({ inviteUrl: url, invitedByName: request.currentUser!.name }),
     });
 
     await recordAudit(db, {

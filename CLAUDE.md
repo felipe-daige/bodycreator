@@ -4,16 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**Body Creator** — sticker infoproduct for Instagram Stories, aimed at health/aesthetics professionals. Four subsystems in one repo:
+**Body Creator** — sticker infoproduct for Instagram Stories, aimed at health/aesthetics professionals. Three subsystems in one repo:
 
 | Directory | What it is |
 |---|---|
-| `App/ Catalog/ Export/ Favorites/ UI/` | iOS app (SwiftUI, iOS 16+, iPhone-only). Picks a sticker + patient photo, hands both to Instagram. |
+| `App/ Catalog/ Export/ Favorites/ UI/ Administration/` | iOS app (SwiftUI, iOS 16+, iPhone-only). Consumer catalog plus the native admin area. |
 | `server/` | Backend API (Fastify 5 + Drizzle/Postgres 16, TypeScript). Invites, permissions, sticker upload, versioned catalog publishing to Cloudflare R2. |
-| `admin/` | Admin panel (React + Vite). Where the owner and managers upload stickers and publish the catalog. |
 | `infra/` | Production: Docker Compose, Caddy, backup scripts. Ops runbook in `docs/OPERACAO.md` (pt-BR). |
 
-Specs live in `docs/superpowers/specs/`: `2026-07-17-figurinhas-stories-design.md` (iOS MVP; read §5b before touching the Instagram flow) and `2026-07-18-infoproduto-p1-backend-admin-design.md` (backend/panel; also describes future sub-projects P2 remote catalog in app, P3 IAP monetization, P4 Explore tab). Execution ledger: `.superpowers/sdd/progress.md`.
+Specs live in `docs/superpowers/specs/`: `2026-07-17-figurinhas-stories-design.md` (iOS MVP; read §5b before touching Instagram), `2026-07-18-infoproduto-p1-backend-admin-design.md` (historical P1 API/web design), and `2026-07-18-native-administration-remote-catalog-design.md` (current native-admin decision; supersedes the web panel). Execution ledger: `.superpowers/sdd/progress.md`.
 
 Internal iOS names are still `Figurinhas` (target, scheme, `Figurinhas.xcodeproj`) while the product is "Body Creator" — deliberate, not drift.
 
@@ -23,7 +22,7 @@ Internal iOS names are still `Figurinhas` (target, scheme, `Figurinhas.xcodeproj
 - **Sticker `id` is globally unique**, not per pack. iOS favorites store bare ids (`favoriteStickerIDs` in UserDefaults); the server enforces uniqueness with a DB primary key on `stickers.id` (text).
 - **The published manifest must decode with `Catalog/Models.swift`.** Same shape as `Content/manifest.json`. `StickerPack.cover` is a **non-optional** `String` — a `null` cover breaks the whole catalog decode, which is why `buildManifest` filters packs without cover and the publish route refuses them.
 - **`catalog/v{N}.json` is immutable; `catalog/current.json` is the mutable pointer.** Rollback = move the pointer. Cache rule lives in `isMutablePointer()` (`server/src/storage/r2.ts`): pointer gets 60s, everything else immutable/1y. New object keys must respect this split.
-- All user-facing text in **pt-BR** (app, API errors, panel, ops docs). Code identifiers in English.
+- All user-facing text in **pt-BR** (app, API errors, ops docs). Code identifiers in English.
 - No secrets in the repo — env vars only, validated at startup (`server/src/config.ts` fails the boot if one is missing).
 
 ## Server (`server/`)
@@ -31,7 +30,7 @@ Internal iOS names are still `Figurinhas` (target, scheme, `Figurinhas.xcodeproj
 ```bash
 docker compose -f infra/docker-compose.dev.yml up -d   # dev DB :54320, test DB :55432 (tmpfs)
 cd server
-npm test              # 170 tests; integration tests need the :55432 container
+npm test              # 175 tests; integration tests need the :55432 container
 npm test -- invites   # filter by file name
 npm run dev           # tsx watch, http://localhost:3000
 npm run db:generate   # after editing src/db/schema.ts — then inspect the SQL in drizzle/
@@ -44,7 +43,7 @@ Beware: a Homebrew Postgres on the host can shadow a dev container on :5432 (hen
 
 `buildApp(deps)` in `src/app.ts` is a factory that never calls `listen()` — tests inject `AppDeps = { config, db, mailer, storage }` with `createFakeMailer()` and `createMemoryStorage()`. Adding a dependency to `AppDeps` means updating every `buildApp` call in tests.
 
-Auth: signed cookie carries only the userId; **the user is re-read from the DB on every request** (`requireAuth`), so disabling an account takes effect on the next request. There is deliberately no session table. `mustChangePassword` is enforced server-side in `requireAuth` (allowlist: `/auth/me`, `/auth/change-password`, `/auth/logout`).
+Auth: signed cookie carries only the userId; **the user is re-read from the DB on every request** (`requireAuth`), so disabling an account takes effect on the next request. There is deliberately no session table. `mustChangePassword` is enforced server-side in `requireAuth` (allowlist: `/auth/me`, `/auth/change-password`, `/auth/logout`). Account deletion anonymizes the referenced user row instead of breaking audit/content foreign keys.
 
 Permissions: `role` (`admin` | `gerente`) + explicit permission list. `canDo()` (`src/auth/permissions.ts`) refuses `user.manage` for gerente **even if the string is in the DB** — defense at read time. `pack.price` and `report.view` exist but are inert until P3. No public signup: invite-only (32-byte token, stored hashed, single-use, 7 days).
 
@@ -56,20 +55,16 @@ Audit: `recordAudit()` recursively strips password/token fields from payloads be
 - Helpers in `tests/setup/app.ts` (`criarELogar`, `criarPackComCategoria`, `criarPackPublicavel`) and `tests/setup/db.ts` (`withTestDb` — migrates once, truncates between cases). Reuse them.
 - Nothing talks to real R2 or sends real e-mail — thin `Storage`/`Mailer` interfaces with in-memory fakes; the real implementations are verified manually in staging.
 
-## Admin panel (`admin/`)
+## Native administration (`Administration/`)
 
-```bash
-cd admin && npm run dev    # :5173, expects API on :3000
-npm run build              # VITE_API_URL=/api in production builds (Caddy serves both on one domain)
-```
-
-- All HTTP goes through `apiFetch` (`src/api.ts`) — it embeds `credentials: 'include'` and surfaces the server's pt-BR `{ error }` message. Never call `fetch` directly; show the server's message instead of a generic one.
-- `can()` in `src/auth.tsx` only hides useless controls. **Authorization is the server's** — every hidden control must map to a route the server actually refuses.
-- No `localStorage` for anything auth-related; the session cookie is httpOnly.
+- `APIClient` is the only native HTTP boundary. It uses `URLSession`'s cookie store, surfaces the server's pt-BR `{ error }`, and never stores credentials in `UserDefaults`.
+- `AuthStore.can()` only hides controls. **Authorization is the server's** — every hidden control maps to a route protected by `requirePermission`.
+- Invitations open `bodycreator://convite?token=...`; keep the URL scheme in `project.yml` and `PUBLIC_APP_INVITE_URL` in server config synchronized.
+- `SelectedPNG` and multipart upload preserve the selected bytes exactly. Do not use `UIImage.pngData()` in the admin upload path.
 
 ## Infra (`infra/`)
 
-- Panel and API share one domain; Caddy strips `/api` before proxying. This keeps the session cookie same-site — don't split into two domains.
+- Caddy exposes only the API domain. There is no web panel service or static volume.
 - Deploy order is fixed: `pull` → migrate → `up -d`. Migrating after the new API is up creates a window of new code against old schema.
 - `backup.sh` / `restore-check.sh` run on the VPS (GNU tools, not macOS). The restore check actually restores into a disposable container and counts tables **and** users — keep both checks.
 - Fastify runs with `trustProxy: true` because it is only reachable through Caddy (no published ports on the api container). Login rate limit is per-IP *and* per-email (in-memory map, resets on restart — by design).
@@ -96,7 +91,7 @@ swift Scripts/generate_placeholders.swift Content
 
 ### Architecture
 
-Four modules, one-way dependencies: **UI → {Catalog, Favorites, Export}**. `CatalogStore` is the only thing that knows where content comes from — the P2 bundle→server swap happens there alone. It drops stickers with missing files and prunes empty categories (the server-side `buildManifest` mirrors this pruning at the source).
+The consumer UI still depends on Catalog/Favorites/Export. `CatalogStore` owns bundle fallback, the signed-checksum remote manifest snapshot, and exact-byte asset caching. A failed refresh must never replace cached/bundled content with an empty catalog.
 
 `Content/` is bundle content: `manifest.json` + PNG folders, validated by a **pre-build phase that fails the build** on: missing file, duplicate id, PNG without alpha, >2 MB, longest side outside 512–2048 px. The server upload enforces the identical rules.
 
@@ -112,4 +107,4 @@ Four modules, one-way dependencies: **UI → {Catalog, Favorites, Export}**. `Ca
 
 - iOS 16.0 floor — no iOS 17+ API (`ContentUnavailableView`, two-parameter `onChange`). Apple frameworks only.
 - UI elements the end-to-end test drives carry `accessibilityIdentifier`s (`sticker-<id>`, `take-photo`, `copy-only`, …) — keep in sync with `UITests/BodyCreatorUITests.swift`. SwiftUI `confirmationDialog` cancel is invisible to XCUITest.
-- The app collects no data ("Data Not Collected" label, `App/PrivacyInfo.xcprivacy` CA92.1) — keep that true as code changes; P3 (IAP) is when this gets revisited.
+- Consumer photos still never leave the device. Native admin accounts do send name, e-mail and an account identifier to the API for app functionality; the privacy manifest and App Store privacy answers must disclose these as linked, non-tracking data.

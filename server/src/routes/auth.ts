@@ -1,13 +1,16 @@
+import { randomBytes } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { users } from '../db/schema.js';
+import { invites, users } from '../db/schema.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
 import { setSession, clearSession } from '../auth/session.js';
 import { requireAuth } from '../auth/guards.js';
+import { recordAudit } from '../audit.js';
 
 const loginSchema = z.object({ email: z.string().email(), password: z.string().min(1) });
 const changeSchema = z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(10) });
+const deleteAccountSchema = z.object({ currentPassword: z.string().min(1) });
 
 const LOGIN_LOCKOUT_MAX_FAILURES = 10;
 const LOGIN_LOCKOUT_WINDOW_MS = 15 * 60 * 1000;
@@ -102,6 +105,47 @@ export async function authRoutes(app: FastifyInstance) {
     await db.update(users)
       .set({ passwordHash: await hashPassword(parsed.data.newPassword), mustChangePassword: false })
       .where(eq(users.id, me.id));
+    return { ok: true };
+  });
+
+  app.delete('/auth/account', {
+    preHandler: requireAuth,
+    config: { rateLimit: { max: 5, timeWindow: '5 minutes' } },
+  }, async (request, reply) => {
+    const parsed = deleteAccountSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: 'Informe sua senha atual para excluir a conta.' });
+    }
+
+    const me = request.currentUser!;
+    const [user] = await db.select().from(users).where(eq(users.id, me.id)).limit(1);
+    if (!user || !(await verifyPassword(user.passwordHash, parsed.data.currentPassword))) {
+      return reply.code(400).send({ error: 'Senha atual incorreta.' });
+    }
+
+    // Mantemos apenas o id técnico porque packs, versões e auditoria o
+    // referenciam por FK. Nome, e-mail, senha e permissões são apagados; isto
+    // preserva a trilha operacional sem preservar a identidade da pessoa.
+    const anonymousEmail = `deleted-${user.id}@bodycreator.invalid`;
+    const replacementHash = await hashPassword(randomBytes(32).toString('hex'));
+    await recordAudit(db, {
+      actorId: user.id, action: 'account.delete', entityType: 'user', entityId: user.id,
+    });
+    await db.transaction(async (tx) => {
+      await tx.update(invites).set({ email: anonymousEmail }).where(eq(invites.email, user.email));
+      await tx.update(users).set({
+        email: anonymousEmail,
+        name: 'Conta excluída',
+        passwordHash: replacementHash,
+        role: 'gerente',
+        permissions: [],
+        status: 'disabled',
+        mustChangePassword: false,
+        lastLoginAt: null,
+      }).where(eq(users.id, user.id));
+    });
+
+    clearSession(reply, isProd);
     return { ok: true };
   });
 }

@@ -23,13 +23,13 @@ const mailer: Mailer = !config.RESEND_API_KEY && isDev
   : createResendMailer(config);
 
 const storage: Storage = config.R2_ACCOUNT_ID === 'dev' && isDev
-  ? createMemoryStorage(`http://localhost:${config.PORT}/dev-storage`)
+  ? createMemoryStorage(config.R2_PUBLIC_BASE_URL)
   : createR2Storage(config);
 
 const app = buildApp({ config, db: createDb(config.DATABASE_URL), mailer, storage });
 
 // Servir os objetos do storage em memória no modo dev, para a capa e as
-// figurinhas aparecerem no painel.
+// figurinhas aparecerem no app.
 if (isDev && 'objects' in storage) {
   const objects = (storage as ReturnType<typeof createMemoryStorage>).objects;
   app.get('/dev-storage/*', async (request, reply) => {

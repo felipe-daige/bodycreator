@@ -15,7 +15,6 @@ let mailer: ReturnType<typeof createFakeMailer>;
 
 const config = loadConfig({
   NODE_ENV: 'test', DATABASE_URL: t.url, SESSION_SECRET: 's'.repeat(32),
-  PUBLIC_PANEL_ORIGIN: 'http://localhost:5173',
   R2_ACCOUNT_ID: 'x', R2_ACCESS_KEY_ID: 'x', R2_SECRET_ACCESS_KEY: 'x',
   R2_BUCKET: 'x', R2_PUBLIC_BASE_URL: 'https://cdn.example.com',
   MAIL_FROM: 'nao-responda@exemplo.com',
@@ -49,7 +48,7 @@ describe('POST /invites', () => {
     expect(res.statusCode).toBe(201);
     expect(mailer.sent).toHaveLength(1);
     expect(mailer.sent[0]!.to).toBe('nova@exemplo.com');
-    expect(mailer.sent[0]!.text).toContain('/convite?token=');
+    expect(mailer.sent[0]!.text).toContain('bodycreator://convite?token=');
   });
 
   it('grava apenas o hash do token, nunca o token', async () => {
@@ -106,7 +105,7 @@ describe('POST /invites', () => {
 
   // Sem esta checagem, dois convites pendentes para o mesmo e-mail eram
   // criáveis, e o segundo aceite estourava a constraint unique(email) de
-  // users com 500 — um bug de banco disfarçado de bug de painel.
+  // users com 500 — um bug de banco disfarçado de bug na interface.
   it('recusa um segundo convite pendente para o mesmo e-mail com 409 em pt-BR', async () => {
     const cookie = await criarELogar('admin');
     const primeiro = await app.inject({

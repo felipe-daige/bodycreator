@@ -8,7 +8,6 @@ const config = loadConfig({
   NODE_ENV: 'test',
   DATABASE_URL: 'postgres://x/x',
   SESSION_SECRET: 'x'.repeat(32),
-  PUBLIC_PANEL_ORIGIN: 'http://localhost:5173',
   R2_ACCOUNT_ID: 'x',
   R2_ACCESS_KEY_ID: 'x',
   R2_SECRET_ACCESS_KEY: 'x',

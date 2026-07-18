@@ -16,7 +16,6 @@ const config = loadConfig({
   NODE_ENV: 'test',
   DATABASE_URL: t.url,
   SESSION_SECRET: 's'.repeat(32),
-  PUBLIC_PANEL_ORIGIN: 'http://localhost:5173',
   R2_ACCOUNT_ID: 'x', R2_ACCESS_KEY_ID: 'x', R2_SECRET_ACCESS_KEY: 'x',
   R2_BUCKET: 'x', R2_PUBLIC_BASE_URL: 'https://cdn.example.com',
   MAIL_FROM: 'nao-responda@example.com',
@@ -132,6 +131,49 @@ describe('POST /auth/change-password', () => {
       payload: { currentPassword: 'senha-errada', newPassword: 'nova-senha-1234' },
     });
     expect(bloqueada.statusCode).toBe(429);
+  });
+});
+
+describe('DELETE /auth/account', () => {
+  it('recusa sem sessão', async () => {
+    const res = await app.inject({
+      method: 'DELETE', url: '/auth/account', payload: { currentPassword: 'senha-correta-123' },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('recusa senha atual incorreta sem alterar a conta', async () => {
+    const user = await criarUsuario();
+    const { cookie } = await logar();
+    const res = await app.inject({
+      method: 'DELETE', url: '/auth/account', headers: { cookie },
+      payload: { currentPassword: 'senha-errada' },
+    });
+    expect(res.statusCode).toBe(400);
+    const [after] = await t.db.select().from(users).where(eq(users.id, user.id));
+    expect(after!.email).toBe('medica@exemplo.com');
+    expect(after!.status).toBe('active');
+  });
+
+  it('apaga dados pessoais, desativa o acesso e invalida a sessão', async () => {
+    const user = await criarUsuario();
+    const { cookie } = await logar();
+    const res = await app.inject({
+      method: 'DELETE', url: '/auth/account', headers: { cookie },
+      payload: { currentPassword: 'senha-correta-123' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+
+    const [after] = await t.db.select().from(users).where(eq(users.id, user.id));
+    expect(after!.name).toBe('Conta excluída');
+    expect(after!.email).not.toContain('medica@exemplo.com');
+    expect(after!.email).toContain('@bodycreator.invalid');
+    expect(after!.permissions).toEqual([]);
+    expect(after!.status).toBe('disabled');
+
+    const me = await app.inject({ method: 'GET', url: '/auth/me', headers: { cookie } });
+    expect(me.statusCode).toBe(401);
   });
 });
 

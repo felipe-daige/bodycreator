@@ -47,21 +47,6 @@ jobs:
           cache-from: type=gha,scope=api
           cache-to: type=gha,mode=max,scope=api
 
-      - name: Build e push da imagem do painel
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: infra/Dockerfile.admin
-          push: true
-          # Painel e API no mesmo domínio, API sob /api — ver infra/Caddyfile.
-          build-args: |
-            VITE_API_URL=/api
-          tags: |
-            ghcr.io/${{ steps.repo.outputs.lower }}/admin:latest
-            ghcr.io/${{ steps.repo.outputs.lower }}/admin:${{ github.sha }}
-          cache-from: type=gha,scope=admin
-          cache-to: type=gha,mode=max,scope=admin
-
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest

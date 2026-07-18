@@ -43,9 +43,9 @@ function escapeHtml(str: string): string {
 
 export function renderInviteEmail(params: { inviteUrl: string; invitedByName: string }) {
   const { inviteUrl, invitedByName } = params;
-  const subject = 'Seu acesso ao painel do Body Creator';
+  const subject = 'Seu acesso administrativo ao Body Creator';
   const text = [
-    `${invitedByName} convidou você para o painel do Body Creator.`,
+    `${invitedByName} convidou você para administrar o Body Creator pelo app.`,
     '',
     'Crie sua senha neste link:',
     inviteUrl,
@@ -56,7 +56,7 @@ export function renderInviteEmail(params: { inviteUrl: string; invitedByName: st
   const escapedName = escapeHtml(invitedByName);
   const escapedUrl = escapeHtml(inviteUrl);
   const html = `
-    <p>${escapedName} convidou você para o painel do <strong>Body Creator</strong>.</p>
+    <p>${escapedName} convidou você para administrar o <strong>Body Creator</strong> pelo app.</p>
     <p><a href="${escapedUrl}">Criar minha senha</a></p>
     <p>O convite vale por 7 dias. Depois disso, peça um novo.</p>
     <p style="color:#666;font-size:12px">Se você não esperava este e-mail, pode ignorá-lo.</p>

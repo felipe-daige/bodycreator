@@ -1,8 +1,10 @@
 import SwiftUI
 
 struct RootView: View {
+    @EnvironmentObject private var catalog: CatalogStore
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var showOnboarding = false
+    @State private var pendingInvite: PendingInvite?
 
     var body: some View {
         TabView {
@@ -19,15 +21,41 @@ struct RootView: View {
             .tabItem {
                 Label("Favoritos", systemImage: "heart")
             }
+
+            NavigationStack {
+                AdminRootView()
+            }
+            .tabItem {
+                Label("Gerenciar", systemImage: "gearshape.2")
+            }
         }
         .onAppear {
-            showOnboarding = !hasCompletedOnboarding
+            showOnboarding = !hasCompletedOnboarding && pendingInvite == nil
         }
+        .task { await catalog.refresh() }
+        .onOpenURL(perform: openDeepLink)
         .fullScreenCover(isPresented: $showOnboarding) {
             OnboardingView {
                 hasCompletedOnboarding = true
                 showOnboarding = false
             }
         }
+        .sheet(item: $pendingInvite) { invite in
+            InviteAcceptanceView(token: invite.token) {
+                pendingInvite = nil
+            }
+        }
     }
+
+    private func openDeepLink(_ url: URL) {
+        guard let token = DeepLinkParser.inviteToken(from: url) else { return }
+        hasCompletedOnboarding = true
+        showOnboarding = false
+        pendingInvite = PendingInvite(token: token)
+    }
+}
+
+private struct PendingInvite: Identifiable {
+    let token: String
+    var id: String { token }
 }

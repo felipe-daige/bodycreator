@@ -35,6 +35,7 @@ struct PacksListView: View {
             }
         }
         .navigationTitle("Pacotes")
+        .refreshable { await catalog.refresh() }
         .navigationDestination(for: StickerPack.self) { pack in
             PackGridView(pack: pack)
         }

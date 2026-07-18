@@ -13,6 +13,7 @@ import { inviteRoutes } from './routes/invites.js';
 import { userRoutes } from './routes/users.js';
 import { packRoutes } from './routes/packs.js';
 import { stickerRoutes } from './routes/stickers.js';
+import { publishRoutes } from './routes/publish.js';
 
 export type AppDeps = { config: Config; db: Db; mailer: Mailer; storage: Storage };
 
@@ -34,6 +35,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   app.register(userRoutes);
   app.register(packRoutes);
   app.register(stickerRoutes);
+  app.register(publishRoutes);
   return app;
 }
 

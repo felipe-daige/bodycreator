@@ -1,5 +1,6 @@
 import SwiftUI
 import PhotosUI
+import AVFoundation
 import UIKit
 
 struct StickerDetailSheet: View {
@@ -10,9 +11,9 @@ struct StickerDetailSheet: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.dismiss) private var dismiss
     @State private var pickedPhoto: PhotosPickerItem?
-    @State private var showPhotoSourceDialog = false
     @State private var showPhotosPicker = false
     @State private var showCamera = false
+    @State private var showCameraDeniedAlert = false
     @State private var isPreparingPhoto = false
     @State private var statusMessage: String?
     @State private var showCopiedToast = false
@@ -66,19 +67,36 @@ struct StickerDetailSheet: View {
                 .accessibilityIdentifier("favorite-toggle")
             }
 
-            Button {
-                showPhotoSourceDialog = true
-            } label: {
-                Label(
-                    isPreparingPhoto ? "Preparando…" : "Usar no Instagram",
-                    systemImage: "photo.on.rectangle.angled"
-                )
-                .frame(maxWidth: .infinity)
+            HStack(spacing: 10) {
+                Button {
+                    startCamera()
+                } label: {
+                    Label("Tirar foto", systemImage: "camera.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .accessibilityIdentifier("take-photo")
+
+                Button {
+                    showPhotosPicker = true
+                } label: {
+                    Label("Galeria", systemImage: "photo.on.rectangle.angled")
+                        .frame(maxWidth: .infinity)
+                }
+                .accessibilityIdentifier("pick-from-gallery")
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .disabled(isPreparingPhoto)
-            .accessibilityIdentifier("use-in-instagram")
+            .alert("Acesso à câmera desativado", isPresented: $showCameraDeniedAlert) {
+                Button("Abrir Ajustes") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        openURL(url)
+                    }
+                }
+                Button("Agora não", role: .cancel) {}
+            } message: {
+                Text("Para tirar a foto aqui, ative a câmera em Ajustes › Body Creator › Câmera. Enquanto isso, você pode usar a opção Galeria.")
+            }
 
             Button {
                 handle(exporter.copyOnly(imageAt: imageURL))
@@ -90,7 +108,9 @@ struct StickerDetailSheet: View {
             .controlSize(.large)
             .accessibilityIdentifier("copy-only")
 
-            Text(statusMessage ?? "Escolha a foto do paciente: o Instagram abre com ela de fundo e a figurinha por cima.")
+            Text(statusMessage ?? (isPreparingPhoto
+                ? "Preparando…"
+                : "Escolha a foto do paciente: o Instagram abre com ela de fundo e a figurinha por cima."))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -116,13 +136,6 @@ struct StickerDetailSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
-        .confirmationDialog("Foto do paciente", isPresented: $showPhotoSourceDialog, titleVisibility: .visible) {
-            if CameraPicker.isAvailable {
-                Button("Tirar foto agora") { showCamera = true }
-            }
-            Button("Escolher da galeria") { showPhotosPicker = true }
-            Button("Cancelar", role: .cancel) {}
-        }
         .photosPicker(isPresented: $showPhotosPicker, selection: $pickedPhoto, matching: .images)
         .fullScreenCover(isPresented: $showCamera) {
             CameraPicker { image in
@@ -144,6 +157,31 @@ struct StickerDetailSheet: View {
             Button("Cancelar", role: .cancel) {}
         } message: {
             Text("Você também pode usar \u{201C}Só copiar a figurinha\u{201D} e colar em outros apps, como o WhatsApp.")
+        }
+    }
+
+    /// Só apresenta a câmera com permissão concedida: sem isso o
+    /// UIImagePickerController abre uma tela preta.
+    private func startCamera() {
+        guard CameraPicker.isAvailable else {
+            showCameraDeniedAlert = true
+            return
+        }
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            showCamera = true
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { granted in
+                Task { @MainActor in
+                    if granted {
+                        showCamera = true
+                    } else {
+                        showCameraDeniedAlert = true
+                    }
+                }
+            }
+        default:
+            showCameraDeniedAlert = true
         }
     }
 

@@ -22,7 +22,8 @@ final class BodyCreatorUITests: XCTestCase {
         XCTAssertTrue(app.buttons["sticker-seta-reta"].waitForExistence(timeout: 5))
         app.buttons["sticker-seta-reta"].tap()
 
-        XCTAssertTrue(app.buttons["use-in-instagram"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["take-photo"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["pick-from-gallery"].exists)
 
         let copyOnlyButton = app.buttons["copy-only"]
         XCTAssertTrue(copyOnlyButton.waitForExistence(timeout: 5))
@@ -54,11 +55,10 @@ final class BodyCreatorUITests: XCTestCase {
         favoritesScreenshot.lifetime = .keepAlways
         add(favoritesScreenshot)
 
-        // Por último: o menu de origem da foto. Fica no fim porque o "Cancelar"
-        // do confirmationDialog não é exposto como elemento consultável.
+        // As duas origens de foto também estão acessíveis a partir dos favoritos.
         app.buttons["favorite-sticker-seta-reta"].tap()
-        app.buttons["use-in-instagram"].tap()
-        XCTAssertTrue(app.buttons["Escolher da galeria"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["take-photo"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.buttons["pick-from-gallery"].exists)
     }
 
     @MainActor

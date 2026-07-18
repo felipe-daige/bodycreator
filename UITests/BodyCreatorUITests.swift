@@ -1,6 +1,6 @@
 import XCTest
 
-final class BodyCreatoUITests: XCTestCase {
+final class BodyCreatorUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
     }
@@ -59,7 +59,7 @@ final class BodyCreatoUITests: XCTestCase {
 
     @MainActor
     private func finishOnboardingIfNeeded(in app: XCUIApplication) {
-        guard app.staticTexts["Body Creato"].waitForExistence(timeout: 2) else {
+        guard app.staticTexts["Body Creator"].waitForExistence(timeout: 2) else {
             return
         }
 

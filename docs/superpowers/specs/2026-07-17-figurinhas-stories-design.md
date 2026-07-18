@@ -14,7 +14,7 @@ App iOS nativo de figurinhas (stickers PNG transparentes) para Instagram Stories
 - Abordagem A escolhida: conteúdo embutido no app, sem backend, estrutura preparada para evoluir (conteúdo remoto e cobrança) sem retrabalho.
 - Monetização adiada: MVP publica com todos os pacotes desbloqueados; o manifesto já carrega o campo `free` por pacote para ativar IAP depois.
 - Artes fornecidas pela idealizadora (PNGs). O app entrega estrutura, não conteúdo.
-- Nome comercial definido: **Body Creato**. O ícone atual é provisório; a identidade visual final continua sendo um insumo da idealizadora antes do envio à App Store.
+- Nome comercial definido: **Body Creator**. O ícone atual é provisório; a identidade visual final continua sendo um insumo da idealizadora antes do envio à App Store.
 
 ## 2. Experiência de uso
 

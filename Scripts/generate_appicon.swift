@@ -1,5 +1,5 @@
 #!/usr/bin/env swift
-// Gera o ícone provisório do Body Creato (1024x1024, sem alfa) e a cor de destaque.
+// Gera o ícone provisório do Body Creator (1024x1024, sem alfa) e a cor de destaque.
 import Foundation
 import CoreGraphics
 import CoreText

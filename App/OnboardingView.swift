@@ -25,7 +25,7 @@ struct OnboardingView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Text("Body Creato")
+            Text("Body Creator")
                 .font(.title.bold())
                 .padding(.top, 32)
 

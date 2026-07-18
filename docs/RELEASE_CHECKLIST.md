@@ -1,4 +1,4 @@
-# Checklist de release — Body Creato
+# Checklist de release — Body Creator
 
 ## Antes de todo envio à App Store
 
@@ -18,8 +18,8 @@
 
 - [ ] Substituir `Content/packs/exemplo` pelas artes finais e rodar o validador.
 - [ ] Substituir o ícone provisório em `App/Assets.xcassets/AppIcon.appiconset/AppIcon.png` pela identidade final (1024×1024, sem alfa).
-- [ ] Confirmar disponibilidade do nome “Body Creato” no App Store Connect.
-- [ ] Confirmar o bundle id `com.daige.bodycreato` e selecionar a equipe da conta Apple Developer.
+- [ ] Confirmar disponibilidade do nome “Body Creator” no App Store Connect.
+- [ ] Confirmar o bundle id `com.daige.bodycreator` e selecionar a equipe da conta Apple Developer.
 - [ ] Preencher a ficha de privacidade como “Dados não coletados”.
 - [ ] Preparar screenshots exigidas para os tamanhos de iPhone aceitos pelo App Store Connect.
 - [ ] Preparar subtítulo, descrição, palavras-chave, URL de suporte e política de privacidade em pt-BR.

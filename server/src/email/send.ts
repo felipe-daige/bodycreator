@@ -32,6 +32,15 @@ export function createResendMailer(config: Config): Mailer {
   };
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function renderInviteEmail(params: { inviteUrl: string; invitedByName: string }) {
   const { inviteUrl, invitedByName } = params;
   const subject = 'Seu acesso ao painel do Body Creator';
@@ -44,9 +53,11 @@ export function renderInviteEmail(params: { inviteUrl: string; invitedByName: st
     'O convite vale por 7 dias. Depois disso, peça um novo.',
     'Se você não esperava este e-mail, pode ignorá-lo.',
   ].join('\n');
+  const escapedName = escapeHtml(invitedByName);
+  const escapedUrl = escapeHtml(inviteUrl);
   const html = `
-    <p>${invitedByName} convidou você para o painel do <strong>Body Creator</strong>.</p>
-    <p><a href="${inviteUrl}">Criar minha senha</a></p>
+    <p>${escapedName} convidou você para o painel do <strong>Body Creator</strong>.</p>
+    <p><a href="${escapedUrl}">Criar minha senha</a></p>
     <p>O convite vale por 7 dias. Depois disso, peça um novo.</p>
     <p style="color:#666;font-size:12px">Se você não esperava este e-mail, pode ignorá-lo.</p>
   `;

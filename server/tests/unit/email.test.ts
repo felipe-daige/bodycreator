@@ -21,6 +21,41 @@ describe('renderInviteEmail', () => {
     const msg = renderInviteEmail({ inviteUrl: 'https://x/y', invitedByName: 'M' });
     expect(msg.text).toMatch(/7 dias/);
   });
+
+  it('escapa HTML em invitedByName no html', () => {
+    const msg = renderInviteEmail({
+      inviteUrl: 'https://x/y',
+      invitedByName: '<script>alert(1)</script>',
+    });
+    expect(msg.html).not.toContain('<script>');
+    expect(msg.html).toContain('&lt;script&gt;');
+  });
+
+  it('escapa HTML em invitedByName quando tem aspas duplas e ampersand', () => {
+    const msg = renderInviteEmail({
+      inviteUrl: 'https://x/y',
+      invitedByName: 'João & "Admin"',
+    });
+    expect(msg.html).toContain('João &amp; &quot;Admin&quot;');
+    expect(msg.html).not.toContain('João & "Admin"');
+  });
+
+  it('mantém invitedByName sem escape na versão text', () => {
+    const msg = renderInviteEmail({
+      inviteUrl: 'https://x/y',
+      invitedByName: '<script>alert(1)</script>',
+    });
+    expect(msg.text).toContain('<script>alert(1)</script>');
+    expect(msg.text).not.toContain('&lt;');
+  });
+
+  it('mantém nome simples idêntico no html', () => {
+    const msg = renderInviteEmail({
+      inviteUrl: 'https://x/y',
+      invitedByName: 'Maiara',
+    });
+    expect(msg.html).toContain('Maiara');
+  });
 });
 
 describe('createFakeMailer', () => {

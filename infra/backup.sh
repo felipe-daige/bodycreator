@@ -57,15 +57,19 @@ aws s3 cp "$TMP" "s3://${R2_BUCKET}/backups/${FILE}" \
 
 rm -f "$TMP"
 
-# Retenção de 30 dias
-CUTOFF=$(date -u -d '30 days ago' +%Y%m%d)
-aws s3 ls "s3://${R2_BUCKET}/backups/" \
-  --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" \
-  | awk '{print $4}' | while read -r name; do
-      d=$(echo "$name" | sed -n 's/bodycreator-\([0-9]\{8\}\)T.*/\1/p')
-      [ -n "$d" ] && [ "$d" -lt "$CUTOFF" ] && \
-        aws s3 rm "s3://${R2_BUCKET}/backups/${name}" \
-          --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
-    done
+# Retenção de 30 dias — falha nesta etapa não deve abortar o backup do dia,
+# que já completou com sucesso acima. Se a limpeza antiga falhar, avisa mas
+# continua (o upload de hoje está garantido).
+{
+  CUTOFF=$(date -u -d '30 days ago' +%Y%m%d)
+  aws s3 ls "s3://${R2_BUCKET}/backups/" \
+    --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com" \
+    | awk '{print $4}' | while read -r name; do
+        d=$(echo "$name" | sed -n 's/bodycreator-\([0-9]\{8\}\)T.*/\1/p')
+        [ -n "$d" ] && [ "$d" -lt "$CUTOFF" ] && \
+          aws s3 rm "s3://${R2_BUCKET}/backups/${name}" \
+            --endpoint-url "https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+      done
+} || echo "AVISO: falha ao limpar backups antigos (retenção) — o backup de hoje foi registrado com sucesso."
 
 echo "Backup concluído: ${FILE} (${SIZE} bytes)"

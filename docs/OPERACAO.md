@@ -321,6 +321,15 @@ sudo crontab -e
 Backup todo dia às 4h15 UTC; verificação de restauração no dia 1 de cada mês às
 5h30 UTC (depois do backup do dia ter concluído).
 
+**Nota sobre PATH do cron**: o cron do root tem um `PATH` mínimo e pode não
+encontrar `docker` ou `aws` instalados em locais não-padrão. Se o log do cron
+mostrar "command not found", defina o `PATH` correto no topo do crontab:
+
+```bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+15 4 * * *  /opt/bodycreator/infra/backup.sh        >> /var/log/bodycreator-backup.log 2>&1
+```
+
 ### Rodar os dois pela primeira vez, à mão
 
 Depois de agendar, rode os dois manualmente uma vez — um plano que só agenda o
@@ -342,6 +351,11 @@ Diferente do `restore-check.sh` (que só valida num container descartável), ist
 **restaura de fato** o banco de produção. **Destrutivo** — apaga o conteúdo atual
 antes de restaurar. Confirme que tem o arquivo certo antes de rodar.
 
+O dump é gerado com `--no-owner --no-privileges` (ver `infra/backup.sh`) para não
+depender da role de produção existir tal qual no destino — portanto, restaurações
+em ambientes novos (VPS reconstruído, container de verificação) funcionam sem erros
+de permissão mascarando a restauração real.
+
 ```bash
 cd /opt/bodycreator
 source .env
@@ -360,7 +374,10 @@ docker compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
   -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 
 # 4. Restaura o dump
-gunzip -c /tmp/restore.sql.gz | docker compose exec -T db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+# -v ON_ERROR_STOP=1: essencial para abortar se o dump estiver corrompido
+# ou o schema for incompatível — sem isso, psql silencia erros, sai com código 0,
+# e o operador fica achando que restaurou quando na verdade falhou.
+gunzip -c /tmp/restore.sql.gz | docker compose exec -T db psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"
 
 # 5. Sobe a API de novo
 docker compose start api

@@ -36,6 +36,9 @@ aws s3 cp "s3://${R2_BUCKET}/backups/${LATEST}" /tmp/check.sql.gz \
 # alguma verificação abaixo falhar (é o que `set -e` + `exit 1` aciona) —
 # sem isso, o segundo run do mês colidiria com o container `restore-check`
 # ainda vivo do primeiro (docker run --name falharia por nome duplicado).
+# Limpeza defensiva: se uma execução anterior morrer sem rodar o trap (SIGKILL,
+# queda do VPS), o container fica, então todos os runs seguintes falham.
+docker rm -f restore-check >/dev/null 2>&1 || true
 docker run -d --name restore-check -e POSTGRES_PASSWORD=check postgres:16-alpine >/dev/null
 trap 'rm -f /tmp/check.sql.gz; docker rm -f restore-check >/dev/null 2>&1 || true' EXIT
 

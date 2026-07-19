@@ -82,6 +82,10 @@ struct AdminPackEditorView: View {
                 LabeledContent("Identificador", value: pack.slug)
                 LabeledContent("Autor(a)", value: pack.authorName)
                 LabeledContent("Status", value: pack.status.label)
+                LabeledContent("Na loja", value: pack.isFree ? "Grátis" : "Compra única")
+                if let productID = pack.storeProductId {
+                    LabeledContent("Product ID", value: productID)
+                }
                 if !pack.description.isEmpty { Text(pack.description).foregroundStyle(.secondary) }
                 if auth.isOwnerAdministrator {
                     Button("Editar informações") { showEditInfo = true }

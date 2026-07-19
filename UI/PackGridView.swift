@@ -3,6 +3,7 @@ import SwiftUI
 struct PackGridView: View {
     let pack: StickerPack
     @EnvironmentObject private var catalog: CatalogStore
+    @EnvironmentObject private var purchases: PurchaseStore
     @State private var query = ""
     @State private var selectedCategoryID: String?
     @State var selectedSticker: Sticker?
@@ -43,7 +44,11 @@ struct PackGridView: View {
                         Button {
                             selectedSticker = sticker
                         } label: {
-                            StickerCell(sticker: sticker, imageURL: catalog.imageURL(for: sticker))
+                            StickerCell(
+                                sticker: sticker,
+                                imageURL: catalog.imageURL(for: sticker),
+                                bearerToken: purchases.accessToken(for: pack)
+                            )
                         }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("sticker-\(sticker.id)")
@@ -56,7 +61,11 @@ struct PackGridView: View {
         .navigationTitle(pack.name)
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $selectedSticker) { sticker in
-            StickerDetailSheet(sticker: sticker, imageURL: catalog.imageURL(for: sticker))
+            StickerDetailSheet(
+                sticker: sticker,
+                imageURL: catalog.imageURL(for: sticker),
+                bearerToken: purchases.accessToken(for: pack)
+            )
         }
     }
 

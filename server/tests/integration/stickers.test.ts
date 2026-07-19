@@ -132,6 +132,17 @@ describe('POST /packs/:id/stickers', () => {
     expect(res.statusCode).toBe(400);
   });
 
+  it('reserva o prefixo das capas para não expor uma figurinha paga', async () => {
+    const cookie = await criarELogar('admin');
+    const { packId, categoryId } = await criarPackComCategoria(cookie);
+    const res = await subirFigurinha(
+      cookie, packId, categoryId, 'cover-segreda', await pngComAlfa(),
+    );
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toMatch(/prefixo reservado/i);
+    expect(await t.db.select().from(stickers)).toHaveLength(0);
+  });
+
   // JSON.parse cru sem guarda: texto que não é JSON vira exceção não tratada
   // (500). Precisa virar 400 em pt-BR, como qualquer outro dado de entrada
   // ruim.

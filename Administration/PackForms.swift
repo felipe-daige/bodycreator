@@ -10,6 +10,8 @@ struct EditPackInfoView: View {
     @State private var name: String
     @State private var description: String
     @State private var sortOrder: Int
+    @State private var isFree: Bool
+    @State private var storeProductID: String
     @State private var isSaving = false
     @State private var errorMessage: String?
 
@@ -19,6 +21,8 @@ struct EditPackInfoView: View {
         _name = State(initialValue: pack.name)
         _description = State(initialValue: pack.description)
         _sortOrder = State(initialValue: pack.sortOrder)
+        _isFree = State(initialValue: pack.isFree)
+        _storeProductID = State(initialValue: pack.storeProductId ?? "")
     }
 
     var body: some View {
@@ -30,6 +34,17 @@ struct EditPackInfoView: View {
                         .lineLimit(2...5)
                     Stepper("Posição no catálogo: \(sortOrder)", value: $sortOrder)
                 }
+                Section("Loja") {
+                    Toggle("Pacote gratuito", isOn: $isFree)
+                    if !isFree {
+                        TextField("ID do produto na App Store", text: $storeProductID)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        Text("Crie um produto não consumível no App Store Connect. O preço é definido lá e aparece automaticamente para cada país.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 if let errorMessage {
                     Section { Text(errorMessage).foregroundStyle(.red) }
                 }
@@ -39,7 +54,10 @@ struct EditPackInfoView: View {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancelar") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isSaving ? "Salvando…" : "Salvar") { save() }
-                        .disabled(isSaving || name.count < 2)
+                        .disabled(
+                            isSaving || name.count < 2 ||
+                            (!isFree && storeProductID.trimmingCharacters(in: .whitespaces).isEmpty)
+                        )
                 }
             }
         }
@@ -55,7 +73,11 @@ struct EditPackInfoView: View {
                     id: pack.id,
                     name: name,
                     description: description,
-                    sortOrder: sortOrder
+                    sortOrder: sortOrder,
+                    isFree: isFree,
+                    storeProductID: isFree
+                        ? nil
+                        : storeProductID.trimmingCharacters(in: .whitespacesAndNewlines)
                 )
                 onSaved()
                 dismiss()
@@ -172,7 +194,7 @@ struct StickerUploadView: View {
                     TextField("Identificador", text: $stickerID)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                    Text("Somente letras minúsculas, números e hífen. O identificador é único em todo o catálogo.")
+                    Text("Somente letras minúsculas, números e hífen. O identificador é único em todo o catálogo e não pode começar com “cover”.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     TextField("Nome", text: $name)
@@ -214,6 +236,10 @@ struct StickerUploadView: View {
         let range = NSRange(stickerID.startIndex..., in: stickerID)
         guard regex?.firstMatch(in: stickerID, range: range) != nil else {
             errorMessage = "O identificador aceita apenas letras minúsculas, números e hífen."
+            return
+        }
+        guard stickerID != "cover", !stickerID.hasPrefix("cover-") else {
+            errorMessage = "O identificador não pode usar o prefixo reservado “cover”."
             return
         }
         guard let selectedPNG else { return }

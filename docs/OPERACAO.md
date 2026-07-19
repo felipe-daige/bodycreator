@@ -13,9 +13,9 @@ Um único VPS roda três containers via `infra/docker-compose.yml`:
 - **`caddy`** — único ponto de entrada HTTP(S) público. Faz proxy reverso do
   domínio da API para `api:3000`; TLS é automático (Let's Encrypt via Caddy).
 
-O app usa cookie `httpOnly` na própria sessão nativa do `URLSession`. A API e o
-CDN/R2 podem ter domínios diferentes: a autenticação só viaja para a API, enquanto
-manifestos e PNGs publicados são públicos no CDN.
+O app usa cookie `httpOnly` na própria sessão nativa do `URLSession`. O R2 fica
+privado: manifestos e PNGs saem pela API. Capas e pacotes grátis são públicos;
+figurinhas pagas exigem um token emitido depois da validação da compra da Apple.
 
 ## Pré-requisitos
 
@@ -123,6 +123,12 @@ Pontos de atenção ao preencher (documentados também nos comentários do próp
   `API_BASE_URL` de Release em `project.yml`).
 - `OWNER_ADMIN_EMAIL` deve ser `felipedaige@gmail.com`. Ao iniciar, a API promove
   essa conta e remove papéis/permissões administrativas de todas as demais.
+- `APP_BUNDLE_ID` deve permanecer `com.daige.bodycreator`. `APP_APPLE_ID` é o
+  número exibido em App Store Connect → Informações do app → ID Apple; ele é
+  obrigatório para validar compras do ambiente de produção.
+- O bucket `R2_BUCKET` deve permanecer **privado**, sem domínio público nem
+  `r2.dev` habilitado. Dar uma URL pública ao bucket contorna a proteção dos
+  downloads pagos.
 - `PUBLIC_APP_INVITE_URL` deve permanecer `bodycreator://convite`; é o link que
   abre a tela nativa de aceite de convite.
 - `DATABASE_URL` **repete** o usuário/senha/banco de `POSTGRES_USER` /
@@ -133,6 +139,9 @@ Pontos de atenção ao preencher (documentados também nos comentários do próp
   passadas na hora, uma única vez, no comando do passo 9. Deixá-las num `.env`
   persistente seria mais uma forma de a senha do primeiro admin vazar para
   qualquer coisa que leia esse arquivo depois.
+
+A configuração completa dos produtos e o teste de compras estão em
+[`LOJA_APP_STORE.md`](LOJA_APP_STORE.md).
 
 ### 6. Se as imagens do GHCR forem privadas
 

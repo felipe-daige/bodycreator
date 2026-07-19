@@ -1,4 +1,5 @@
 import XCTest
+import StoreKitTest
 
 final class BodyCreatorUITests: XCTestCase {
     override func setUpWithError() throws {
@@ -75,6 +76,42 @@ final class BodyCreatorUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["settings-login"].exists)
         XCTAssertFalse(app.staticTexts["Área administrativa"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["owner-content-management"].exists)
+    }
+
+    @MainActor
+    func testStoreOffersPurchaseRestoration() throws {
+        let app = XCUIApplication()
+        app.launch()
+        finishOnboardingIfNeeded(in: app)
+
+        app.tabBars.buttons["Loja"].tap()
+
+        XCTAssertTrue(app.navigationBars["Loja"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["restore-purchases"].exists)
+
+        let storeScreenshot = XCTAttachment(screenshot: app.screenshot())
+        storeScreenshot.name = "Loja"
+        storeScreenshot.lifetime = .keepAlways
+        add(storeScreenshot)
+    }
+
+    @MainActor
+    func testLocalStoreKitPurchaseUnlocksPremiumPack() throws {
+        let session = try SKTestSession(configurationFileNamed: "BodyCreator")
+        session.disableDialogs = true
+        session.clearTransactions()
+        defer { session.clearTransactions() }
+
+        let app = XCUIApplication()
+        app.launch()
+        finishOnboardingIfNeeded(in: app)
+        app.tabBars.buttons["Loja"].tap()
+
+        let buyButton = app.buttons["buy-premium-exemplo"]
+        XCTAssertTrue(buyButton.waitForExistence(timeout: 8))
+        buyButton.tap()
+
+        XCTAssertTrue(app.staticTexts["Comprado"].waitForExistence(timeout: 8))
     }
 
     @MainActor

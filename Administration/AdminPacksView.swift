@@ -59,6 +59,9 @@ struct AdminPacksView: View {
                                 Text("Por \(pack.authorName)")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                Text(pack.isFree ? "Grátis" : "Compra única")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(pack.isFree ? Color.secondary : Color.accentColor)
                             }
                             .padding(.vertical, 3)
                         }

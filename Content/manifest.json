@@ -4,6 +4,7 @@
     {
       "id": "exemplo",
       "name": "Pacote de Exemplo",
+      "description": "Marcações e frases essenciais para experimentar o Body Creator.",
       "cover": "packs/exemplo/cover.png",
       "free": true,
       "categories": [
@@ -29,6 +30,40 @@
           "name": "Frases",
           "stickers": [
             { "id": "badge-resultado", "name": "Resultado", "tags": ["resultado", "frase"], "file": "packs/exemplo/badge-resultado.png" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "premium-exemplo",
+      "name": "Pacote Premium de Exemplo",
+      "description": "Pacote de demonstração para testar a compra única no Xcode.",
+      "cover": "packs/exemplo/cover.png",
+      "free": false,
+      "productId": "com.daige.bodycreator.pack.premium-exemplo",
+      "categories": [
+        {
+          "id": "premium-setas-marcacoes",
+          "name": "Setas e marcações",
+          "stickers": [
+            { "id": "premium-seta-reta", "name": "Seta reta premium", "tags": ["seta", "apontar", "marcação"], "file": "packs/exemplo/seta-reta.png" },
+            { "id": "premium-seta-cima", "name": "Seta para cima premium", "tags": ["seta", "lifting"], "file": "packs/exemplo/seta-cima.png" },
+            { "id": "premium-circulo", "name": "Círculo premium", "tags": ["círculo", "marcar", "área"], "file": "packs/exemplo/circulo.png" }
+          ]
+        },
+        {
+          "id": "premium-antes-depois",
+          "name": "Antes e depois",
+          "stickers": [
+            { "id": "premium-badge-antes", "name": "Antes premium", "tags": ["antes", "comparação"], "file": "packs/exemplo/badge-antes.png" },
+            { "id": "premium-badge-depois", "name": "Depois premium", "tags": ["depois", "comparação"], "file": "packs/exemplo/badge-depois.png" }
+          ]
+        },
+        {
+          "id": "premium-frases",
+          "name": "Frases",
+          "stickers": [
+            { "id": "premium-badge-resultado", "name": "Resultado premium", "tags": ["resultado", "frase"], "file": "packs/exemplo/badge-resultado.png" }
           ]
         }
       ]

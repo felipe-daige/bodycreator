@@ -4,7 +4,15 @@ import Foundation
 struct CatalogPointer: Codable, Equatable {
     let version: Int
     let manifest: URL
+    let assets: URL?
     let checksum: String
+
+    init(version: Int, manifest: URL, assets: URL? = nil, checksum: String) {
+        self.version = version
+        self.manifest = manifest
+        self.assets = assets
+        self.checksum = checksum
+    }
 }
 
 struct RemoteCatalogSnapshot: Codable, Equatable {
@@ -63,7 +71,8 @@ struct RemoteCatalogRepository {
             throw RemoteCatalogError.invalidResponse
         }
 
-        let manifestData = try await download(pointer.manifest)
+        let manifestURL = resolved(pointer.manifest, relativeTo: pointerURL)
+        let manifestData = try await download(manifestURL)
         let actualChecksum = SHA256.hash(data: manifestData)
             .map { String(format: "%02x", $0) }
             .joined()
@@ -81,10 +90,15 @@ struct RemoteCatalogRepository {
             throw RemoteCatalogError.invalidResponse
         }
 
-        let catalogDirectory = pointer.manifest.deletingLastPathComponent()
-        let assetBaseURL = catalogDirectory.lastPathComponent == "catalog"
-            ? catalogDirectory.deletingLastPathComponent()
-            : catalogDirectory
+        let assetBaseURL: URL
+        if let assets = pointer.assets {
+            assetBaseURL = resolved(assets, relativeTo: pointerURL)
+        } else {
+            let catalogDirectory = manifestURL.deletingLastPathComponent()
+            assetBaseURL = catalogDirectory.lastPathComponent == "catalog"
+                ? catalogDirectory.deletingLastPathComponent()
+                : catalogDirectory
+        }
         let snapshot = RemoteCatalogSnapshot(manifest: manifest, assetBaseURL: assetBaseURL)
         try persist(snapshot)
         return snapshot
@@ -101,11 +115,11 @@ struct RemoteCatalogRepository {
         return FileManager.default.fileExists(atPath: target.path) ? target : nil
     }
 
-    func localAssetURL(for remoteURL: URL) async throws -> URL {
+    func localAssetURL(for remoteURL: URL, bearerToken: String? = nil) async throws -> URL {
         let target = assetCacheURL(for: remoteURL)
         if FileManager.default.fileExists(atPath: target.path) { return target }
 
-        let data = try await download(remoteURL)
+        let data = try await download(remoteURL, bearerToken: bearerToken)
         let signature = Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
         guard data.starts(with: signature) else { throw RemoteCatalogError.invalidAsset }
 
@@ -134,11 +148,20 @@ struct RemoteCatalogRepository {
         try data.write(to: snapshotURL, options: .atomic)
     }
 
-    private func download(_ url: URL) async throws -> Data {
+    private func resolved(_ url: URL, relativeTo baseURL: URL) -> URL {
+        guard url.scheme == nil else { return url }
+        return URL(string: url.relativeString, relativeTo: baseURL)?.absoluteURL ?? url
+    }
+
+    private func download(_ url: URL, bearerToken: String? = nil) async throws -> Data {
         let data: Data
         let response: URLResponse
         do {
-            (data, response) = try await session.data(from: url)
+            var request = URLRequest(url: url)
+            if let bearerToken {
+                request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+            }
+            (data, response) = try await session.data(for: request)
         } catch {
             throw RemoteCatalogError.unavailable(
                 "Não foi possível atualizar o catálogo. O conteúdo salvo continua disponível."

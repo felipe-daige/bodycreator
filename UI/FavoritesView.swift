@@ -3,10 +3,14 @@ import SwiftUI
 struct FavoritesView: View {
     @EnvironmentObject private var catalog: CatalogStore
     @EnvironmentObject private var favorites: FavoritesStore
+    @EnvironmentObject private var purchases: PurchaseStore
     @State private var selectedSticker: Sticker?
 
     var body: some View {
-        let stickers = catalog.stickers(withIDs: favorites.ids)
+        let stickers = catalog.packs
+            .filter { purchases.hasAccess(to: $0) }
+            .flatMap(\.allStickers)
+            .filter { favorites.ids.contains($0.id) }
 
         Group {
             if stickers.isEmpty {
@@ -38,7 +42,10 @@ struct FavoritesView: View {
                             } label: {
                                 StickerCell(
                                     sticker: sticker,
-                                    imageURL: catalog.imageURL(for: sticker)
+                                    imageURL: catalog.imageURL(for: sticker),
+                                    bearerToken: purchases.accessToken(
+                                        for: catalog.pack(containing: sticker)
+                                    )
                                 )
                             }
                             .buttonStyle(.plain)
@@ -51,7 +58,11 @@ struct FavoritesView: View {
         }
         .navigationTitle("Favoritos")
         .sheet(item: $selectedSticker) { sticker in
-            StickerDetailSheet(sticker: sticker, imageURL: catalog.imageURL(for: sticker))
+            StickerDetailSheet(
+                sticker: sticker,
+                imageURL: catalog.imageURL(for: sticker),
+                bearerToken: purchases.accessToken(for: catalog.pack(containing: sticker))
+            )
         }
     }
 }

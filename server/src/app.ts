@@ -15,8 +15,16 @@ import { packRoutes } from './routes/packs.js';
 import { stickerRoutes } from './routes/stickers.js';
 import { publishRoutes } from './routes/publish.js';
 import { catalogRoutes } from './routes/catalog.js';
+import { storeRoutes } from './routes/store.js';
+import type { StoreTransactionVerifier } from './store/transactionVerifier.js';
 
-export type AppDeps = { config: Config; db: Db; mailer: Mailer; storage: Storage };
+export type AppDeps = {
+  config: Config;
+  db: Db;
+  mailer: Mailer;
+  storage: Storage;
+  storeTransactionVerifier?: StoreTransactionVerifier;
+};
 
 export function buildApp(deps: AppDeps): FastifyInstance {
   const app = Fastify({
@@ -65,6 +73,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   app.register(stickerRoutes);
   app.register(publishRoutes);
   app.register(catalogRoutes);
+  app.register(storeRoutes);
   return app;
 }
 

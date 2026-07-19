@@ -25,7 +25,12 @@ export async function publishRoutes(app: FastifyInstance) {
 
     for (const pack of publicados) {
       input.packs.push({
-        slug: pack.slug, name: pack.name, coverKey: pack.coverKey,
+        slug: pack.slug,
+        name: pack.name,
+        description: pack.description,
+        coverKey: pack.coverKey,
+        isFree: pack.isFree,
+        storeProductId: pack.storeProductId,
         categories: await db.select().from(categories).where(eq(categories.packId, pack.id)),
         stickers: await db.select().from(stickers).where(eq(stickers.packId, pack.id)),
       });
@@ -54,7 +59,7 @@ export async function publishRoutes(app: FastifyInstance) {
 
     await storage.put(
       'catalog/current.json',
-      Buffer.from(JSON.stringify({ version, manifest: storage.publicUrl(manifestKey), checksum })),
+      Buffer.from(JSON.stringify({ version, manifestKey, checksum })),
       'application/json',
     );
 
@@ -64,7 +69,7 @@ export async function publishRoutes(app: FastifyInstance) {
       payload: { version, packs: manifest.packs.length },
     });
 
-    return reply.code(201).send({ version, url: storage.publicUrl(manifestKey), checksum });
+    return reply.code(201).send({ version, url: `/catalog/manifests/${version}`, checksum });
   });
 
   app.post('/publish/rollback', {
@@ -89,7 +94,7 @@ export async function publishRoutes(app: FastifyInstance) {
       'catalog/current.json',
       Buffer.from(JSON.stringify({
         version: alvo.version,
-        manifest: storage.publicUrl(alvo.manifestKey),
+        manifestKey: alvo.manifestKey,
         checksum: alvo.checksum,
       })),
       'application/json',

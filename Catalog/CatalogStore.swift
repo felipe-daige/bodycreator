@@ -72,14 +72,18 @@ final class CatalogStore: ObservableObject {
         return loader.imageURL(forFile: pack.cover)
     }
 
-    func localImageURL(for sticker: Sticker) async throws -> URL {
-        try await localAssetURL(for: imageURL(for: sticker))
+    func localImageURL(for sticker: Sticker, bearerToken: String? = nil) async throws -> URL {
+        try await localAssetURL(for: imageURL(for: sticker), bearerToken: bearerToken)
     }
 
-    func localAssetURL(for url: URL) async throws -> URL {
+    func localAssetURL(for url: URL, bearerToken: String? = nil) async throws -> URL {
         if url.isFileURL { return url }
         guard let remote else { throw RemoteCatalogError.invalidAsset }
-        return try await remote.localAssetURL(for: url)
+        return try await remote.localAssetURL(for: url, bearerToken: bearerToken)
+    }
+
+    func pack(containing sticker: Sticker) -> StickerPack? {
+        packs.first { pack in pack.categories.contains { $0.stickers.contains(sticker) } }
     }
 
     func stickers(withIDs ids: Set<String>) -> [Sticker] {

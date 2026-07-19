@@ -39,10 +39,22 @@ export const packs = pgTable('packs', {
   description: text('description').notNull().default(''),
   coverKey: text('cover_key'),
   authorName: text('author_name').notNull(),
+  isFree: boolean('is_free').notNull().default(true),
+  storeProductId: text('store_product_id').unique(),
   status: packStatusEnum('status').notNull().default('draft'),
   sortOrder: integer('sort_order').notNull().default(0),
   createdBy: uuid('created_by').notNull().references(() => users.id),
   publishedAt: timestamp('published_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const storeTransactions = pgTable('store_transactions', {
+  transactionId: text('transaction_id').primaryKey(),
+  originalTransactionId: text('original_transaction_id').notNull(),
+  productId: text('product_id').notNull(),
+  environment: text('environment').notNull(),
+  purchaseDate: timestamp('purchase_date', { withTimezone: true }).notNull(),
+  lastValidatedAt: timestamp('last_validated_at', { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

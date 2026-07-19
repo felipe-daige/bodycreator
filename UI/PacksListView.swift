@@ -2,19 +2,29 @@ import SwiftUI
 
 struct PacksListView: View {
     @EnvironmentObject private var catalog: CatalogStore
+    @EnvironmentObject private var purchases: PurchaseStore
+
+    private var availablePacks: [StickerPack] {
+        catalog.packs.filter { purchases.hasAccess(to: $0) }
+    }
 
     var body: some View {
         Group {
-            if catalog.packs.isEmpty {
+            if availablePacks.isEmpty {
                 VStack(spacing: 8) {
                     Image(systemName: "square.grid.2x2")
                         .font(.largeTitle)
                         .foregroundStyle(.secondary)
-                    Text("Nenhum conteúdo disponível")
+                    Text(catalog.packs.isEmpty ? "Nenhum conteúdo disponível" : "Sua biblioteca está vazia")
                         .foregroundStyle(.secondary)
+                    if !catalog.packs.isEmpty {
+                        Text("Os pacotes comprados aparecem aqui.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             } else {
-                List(catalog.packs) { pack in
+                List(availablePacks) { pack in
                     NavigationLink(value: pack) {
                         HStack(spacing: 12) {
                             StickerImageView(url: catalog.coverURL(for: pack))

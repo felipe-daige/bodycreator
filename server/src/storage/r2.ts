@@ -62,8 +62,5 @@ export function createR2Storage(config: Config): Storage {
         throw err;
       }
     },
-    publicUrl(key) {
-      return `${config.R2_PUBLIC_BASE_URL.replace(/\/$/, '')}/${key}`;
-    },
   };
 }

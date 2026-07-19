@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { eq, asc } from 'drizzle-orm';
 import { z } from 'zod';
-import { packs, categories, stickers } from '../db/schema.js';
+import { packs, categories, stickers, storeTransactions } from '../db/schema.js';
 import { requireAuth, requirePermission } from '../auth/guards.js';
 import { validatePng } from '../content/validatePng.js';
 import { recordAudit } from '../audit.js';
@@ -19,6 +19,15 @@ const patchSchema = z.object({
   name: z.string().min(2).optional(),
   description: z.string().optional(),
   sortOrder: z.number().int().optional(),
+  isFree: z.boolean().optional(),
+  storeProductId: z.string()
+    .trim()
+    .regex(
+      /^[A-Za-z0-9][A-Za-z0-9._-]{2,254}$/,
+      'O ID do produto da App Store está inválido.',
+    )
+    .nullable()
+    .optional(),
 });
 
 export async function packRoutes(app: FastifyInstance) {
@@ -70,10 +79,47 @@ export async function packRoutes(app: FastifyInstance) {
     const [pack] = await db.select().from(packs).where(eq(packs.id, id)).limit(1);
     if (!pack) return reply.code(404).send({ error: 'Pacote não encontrado.' });
 
-    await db.update(packs).set(parsed.data).where(eq(packs.id, id));
+    const isFree = parsed.data.isFree ?? pack.isFree;
+    const requestedProductId = parsed.data.storeProductId === undefined
+      ? pack.storeProductId
+      : parsed.data.storeProductId;
+    const storeProductId = isFree ? null : requestedProductId;
+    if (!isFree && !storeProductId) {
+      return reply.code(400).send({
+        error: 'Informe o ID do produto da App Store para tornar o pacote pago.',
+      });
+    }
+    if (pack.storeProductId && storeProductId !== pack.storeProductId) {
+      const [purchase] = await db.select({ id: storeTransactions.transactionId })
+        .from(storeTransactions)
+        .where(eq(storeTransactions.productId, pack.storeProductId))
+        .limit(1);
+      if (purchase) {
+        return reply.code(409).send({
+          error: 'Este pacote já possui compras e não pode trocar o ID do produto.',
+        });
+      }
+    }
+    if (storeProductId && storeProductId !== pack.storeProductId) {
+      const [alreadyUsed] = await db.select({ id: packs.id }).from(packs)
+        .where(eq(packs.storeProductId, storeProductId)).limit(1);
+      if (alreadyUsed) {
+        return reply.code(409).send({
+          error: 'Esse ID de produto da App Store já está ligado a outro pacote.',
+        });
+      }
+    }
+
+    const update = {
+      ...parsed.data,
+      ...(parsed.data.isFree !== undefined || parsed.data.storeProductId !== undefined
+        ? { storeProductId }
+        : {}),
+    };
+    await db.update(packs).set(update).where(eq(packs.id, id));
     await recordAudit(db, {
       actorId: request.currentUser!.id, action: 'pack.update',
-      entityType: 'pack', entityId: id, payload: { ...parsed.data },
+      entityType: 'pack', entityId: id, payload: { ...update },
     });
     return { ok: true };
   });
@@ -112,6 +158,11 @@ export async function packRoutes(app: FastifyInstance) {
     }
     if (!pack.coverKey) {
       return reply.code(400).send({ error: 'Não é possível publicar um pacote sem capa.' });
+    }
+    if (!pack.isFree && !pack.storeProductId) {
+      return reply.code(400).send({
+        error: 'Defina o ID do produto da App Store antes de publicar um pacote pago.',
+      });
     }
 
     await db.update(packs).set({ status: 'published', publishedAt: new Date() })

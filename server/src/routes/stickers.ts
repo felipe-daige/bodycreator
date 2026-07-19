@@ -7,6 +7,13 @@ import { validatePng } from '../content/validatePng.js';
 import { recordAudit } from '../audit.js';
 
 const slugRegex = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+const stickerIdSchema = z.string()
+  .regex(slugRegex, 'O id aceita apenas letras minúsculas, números e hífen.')
+  // As capas usam `cover-<checksum>.png` e precisam ser públicas na vitrine.
+  // Reservar esse prefixo impede que uma figurinha paga seja confundida com capa.
+  .refine((id) => id !== 'cover' && !id.startsWith('cover-'), {
+    message: 'O id da figurinha não pode usar o prefixo reservado "cover".',
+  });
 
 export async function stickerRoutes(app: FastifyInstance) {
   const { db, storage } = app.deps;
@@ -25,7 +32,7 @@ export async function stickerRoutes(app: FastifyInstance) {
 
     const fields = file.fields as Record<string, { value?: string } | undefined>;
     const meta = z.object({
-      id: z.string().regex(slugRegex, 'O id aceita apenas letras minúsculas, números e hífen.'),
+      id: stickerIdSchema,
       name: z.string().min(1),
       categoryId: z.string().uuid(),
       tags: z.string().default('[]'),

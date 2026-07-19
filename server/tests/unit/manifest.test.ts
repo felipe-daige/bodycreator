@@ -3,7 +3,8 @@ import { buildManifest } from '../../src/content/manifest.js';
 
 const input = {
   packs: [{
-    slug: 'harmonizacao', name: 'Harmonização', coverKey: 'packs/harmonizacao/cover.png',
+    slug: 'harmonizacao', name: 'Harmonização', description: 'Marcações para procedimentos',
+    coverKey: 'packs/harmonizacao/cover.png', isFree: true, storeProductId: null,
     categories: [
       { id: 'c1', name: 'Setas', sortOrder: 0 },
       { id: 'c2', name: 'Frases', sortOrder: 1 },
@@ -22,6 +23,21 @@ describe('buildManifest', () => {
     expect(m.packs[0]!.id).toBe('harmonizacao');
     expect(m.packs[0]!.cover).toBe('packs/harmonizacao/cover.png');
     expect(m.packs[0]!.free).toBe(true);
+    expect(m.packs[0]!.description).toBe('Marcações para procedimentos');
+    expect(m.packs[0]!.productId).toBeNull();
+  });
+
+  it('publica o Product ID de um pacote pago sem inventar preço', () => {
+    const m = buildManifest({
+      packs: [{
+        ...input.packs[0]!,
+        isFree: false,
+        storeProductId: 'com.daige.bodycreator.pack.harmonizacao',
+      }],
+    }, 1);
+    expect(m.packs[0]!.free).toBe(false);
+    expect(m.packs[0]!.productId).toBe('com.daige.bodycreator.pack.harmonizacao');
+    expect(m.packs[0]).not.toHaveProperty('price');
   });
 
   it('agrupa cada figurinha na categoria certa', () => {

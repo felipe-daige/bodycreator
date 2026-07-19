@@ -1,0 +1,43 @@
+{
+  "identifier" : "4D6D3379-B785-496D-9F1B-D2881AB27320",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "19.90",
+      "familyShareable" : false,
+      "internalID" : "B56788B0-6A57-4C37-9B5C-AE77FB329091",
+      "localizations" : [
+        {
+          "description" : "Figurinhas premium para criar stories profissionais.",
+          "displayName" : "Pacote Premium de Exemplo",
+          "locale" : "pt_BR"
+        }
+      ],
+      "productID" : "com.daige.bodycreator.pack.premium-exemplo",
+      "referenceName" : "Pacote Premium de Exemplo",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 0,
+    "_locale" : "pt_BR",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "BRA",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

@@ -6,13 +6,17 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1),
   SESSION_SECRET: z.string().min(32, 'SESSION_SECRET precisa de ao menos 32 caracteres'),
   OWNER_ADMIN_EMAIL: z.string().email().default('felipedaige@gmail.com'),
+  APP_BUNDLE_ID: z.string().min(3).default('com.daige.bodycreator'),
+  APP_APPLE_ID: z.preprocess(
+    (value) => value === '' ? undefined : value,
+    z.coerce.number().int().positive().optional(),
+  ),
   // Link que o e-mail de convite abre diretamente no app iOS.
   PUBLIC_APP_INVITE_URL: z.string().url().default('bodycreator://convite'),
   R2_ACCOUNT_ID: z.string().min(1),
   R2_ACCESS_KEY_ID: z.string().min(1),
   R2_SECRET_ACCESS_KEY: z.string().min(1),
   R2_BUCKET: z.string().min(1),
-  R2_PUBLIC_BASE_URL: z.string().url(),
   MAIL_FROM: z.string().email(),
   RESEND_API_KEY: z.string().optional(),
 });

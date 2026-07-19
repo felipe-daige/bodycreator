@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createMemoryStorage } from '../../src/storage/memory.js';
-import { createR2Storage, isMutablePointer, isNotFoundError } from '../../src/storage/r2.js';
-import { loadConfig } from '../../src/config.js';
+import { isMutablePointer, isNotFoundError } from '../../src/storage/r2.js';
 
 describe('memory storage', () => {
   it('devolve os mesmos bytes que recebeu, sem alterar nada', async () => {
@@ -13,16 +12,6 @@ describe('memory storage', () => {
 
   it('devolve null para chave inexistente', async () => {
     expect(await createMemoryStorage().get('não/existe.png')).toBeNull();
-  });
-
-  it('monta a URL pública a partir da chave', () => {
-    const s = createMemoryStorage('https://cdn.exemplo.com');
-    expect(s.publicUrl('catalog/v3.json')).toBe('https://cdn.exemplo.com/catalog/v3.json');
-  });
-
-  it('não gera barra dupla quando a base termina com "/"', () => {
-    const s = createMemoryStorage('https://cdn.exemplo.com/');
-    expect(s.publicUrl('catalog/v3.json')).toBe('https://cdn.exemplo.com/catalog/v3.json');
   });
 });
 
@@ -70,30 +59,5 @@ describe('isNotFoundError', () => {
     expect(isNotFoundError(null)).toBe(false);
     expect(isNotFoundError(undefined)).toBe(false);
     expect(isNotFoundError('falha genérica')).toBe(false);
-  });
-});
-
-describe('r2 storage publicUrl', () => {
-  const baseConfig = {
-    NODE_ENV: 'test',
-    DATABASE_URL: 'postgres://x/x',
-    SESSION_SECRET: 'x'.repeat(32),
-    R2_ACCOUNT_ID: 'x',
-    R2_ACCESS_KEY_ID: 'x',
-    R2_SECRET_ACCESS_KEY: 'x',
-    R2_BUCKET: 'x',
-    MAIL_FROM: 'nao-responda@example.com',
-  };
-
-  it('monta a URL correta quando a base não termina com "/"', () => {
-    const config = loadConfig({ ...baseConfig, R2_PUBLIC_BASE_URL: 'https://cdn.exemplo.com' });
-    const s = createR2Storage(config);
-    expect(s.publicUrl('catalog/v3.json')).toBe('https://cdn.exemplo.com/catalog/v3.json');
-  });
-
-  it('não gera barra dupla quando a base termina com "/"', () => {
-    const config = loadConfig({ ...baseConfig, R2_PUBLIC_BASE_URL: 'https://cdn.exemplo.com/' });
-    const s = createR2Storage(config);
-    expect(s.publicUrl('catalog/v3.json')).toBe('https://cdn.exemplo.com/catalog/v3.json');
   });
 });

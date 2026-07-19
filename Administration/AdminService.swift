@@ -52,10 +52,23 @@ struct AdminService {
         )
     }
 
-    func updatePack(id: String, name: String, description: String, sortOrder: Int) async throws {
+    func updatePack(
+        id: String,
+        name: String,
+        description: String,
+        sortOrder: Int,
+        isFree: Bool,
+        storeProductID: String?
+    ) async throws {
         let _: OKResponse = try await api.patch(
             "packs/\(id)",
-            body: UpdatePackBody(name: name, description: description, sortOrder: sortOrder)
+            body: UpdatePackBody(
+                name: name,
+                description: description,
+                sortOrder: sortOrder,
+                isFree: isFree,
+                storeProductId: storeProductID
+            )
         )
     }
 
@@ -105,7 +118,13 @@ private struct ChangePasswordBody: Encodable { let currentPassword: String; let 
 private struct DeleteAccountBody: Encodable { let currentPassword: String }
 private struct AcceptInviteBody: Encodable { let token: String; let name: String; let password: String }
 private struct CreatePackBody: Encodable { let slug: String; let name: String; let description: String; let authorName: String }
-private struct UpdatePackBody: Encodable { let name: String; let description: String; let sortOrder: Int }
+private struct UpdatePackBody: Encodable {
+    let name: String
+    let description: String
+    let sortOrder: Int
+    let isFree: Bool
+    let storeProductId: String?
+}
 private struct CreateCategoryBody: Encodable { let name: String }
 private struct AcceptedInvite: Decodable { let id: String; let email: String }
 private struct CoverResponse: Decodable { let ok: Bool; let coverKey: String }

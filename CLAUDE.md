@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 | Directory | What it is |
 |---|---|
-| `App/ Catalog/ Export/ Favorites/ UI/ Administration/` | iOS app (SwiftUI, iOS 16+, iPhone-only). Consumer catalog plus the native admin area. |
+| `App/ Catalog/ Export/ Favorites/ UI/ Administration/ Store/` | iOS app (SwiftUI, iOS 16+, iPhone-only). Consumer catalog, StoreKit 2 shop, and native admin area. |
 | `server/` | Backend API (Fastify 5 + Drizzle/Postgres 16, TypeScript). Owner-only content management, sticker upload, versioned catalog publishing to Cloudflare R2. |
 | `infra/` | Production: Docker Compose, Caddy, backup scripts. Ops runbook in `docs/OPERACAO.md` (pt-BR). |
 
@@ -21,7 +21,7 @@ Internal iOS names are still `Figurinhas` (target, scheme, `Figurinhas.xcodeproj
 - **Sticker PNG bytes are never re-encoded, anywhere.** Alpha/transparency is the entire product. iOS: `UIImage(data:)` validates only. Server: `sharp` reads metadata only; the original buffer goes to R2 untouched.
 - **Sticker `id` is globally unique**, not per pack. iOS favorites store bare ids (`favoriteStickerIDs` in UserDefaults); the server enforces uniqueness with a DB primary key on `stickers.id` (text).
 - **The published manifest must decode with `Catalog/Models.swift`.** Same shape as `Content/manifest.json`. `StickerPack.cover` is a **non-optional** `String` — a `null` cover breaks the whole catalog decode, which is why `buildManifest` filters packs without cover and the publish route refuses them.
-- **`catalog/v{N}.json` is immutable; `catalog/current.json` is the mutable pointer.** Rollback = move the pointer. Cache rule lives in `isMutablePointer()` (`server/src/storage/r2.ts`): pointer gets 60s, everything else immutable/1y. New object keys must respect this split.
+- **`catalog/v{N}.json` is immutable; `catalog/current.json` is the mutable pointer.** Rollback = move the pointer. The R2 bucket is private; `/catalog/manifests/*` and `/catalog/assets/*` proxy reads through the API, and paid sticker assets require a signed entitlement token.
 - All user-facing text in **pt-BR** (app, API errors, ops docs). Code identifiers in English.
 - No secrets in the repo — env vars only, validated at startup (`server/src/config.ts` fails the boot if one is missing).
 
@@ -93,6 +93,12 @@ swift Scripts/generate_placeholders.swift Content
 ### Architecture
 
 The consumer UI still depends on Catalog/Favorites/Export. `CatalogStore` owns bundle fallback, the signed-checksum remote manifest snapshot, and exact-byte asset caching. A failed refresh must never replace cached/bundled content with an empty catalog.
+
+`PurchaseStore` owns StoreKit 2 products, current entitlements, transaction updates,
+purchase restoration and server download tokens. `StickerPack.productID` maps a
+paid package to one non-consumable App Store Connect product. Price is always
+`Product.displayPrice`; never add a price field to the database or manifest.
+The local `Store/BodyCreator.storekit` file is active only in the Run scheme.
 
 `Content/` is bundle content: `manifest.json` + PNG folders, validated by a **pre-build phase that fails the build** on: missing file, duplicate id, PNG without alpha, >2 MB, longest side outside 512–2048 px. The server upload enforces the identical rules.
 

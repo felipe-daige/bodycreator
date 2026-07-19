@@ -29,6 +29,8 @@ struct AdminPack: Codable, Equatable, Identifiable {
     let description: String
     let coverKey: String?
     let authorName: String
+    let isFree: Bool
+    let storeProductId: String?
     let status: AdminPackStatus
     let sortOrder: Int
     let createdAt: String
@@ -61,6 +63,8 @@ struct AdminPackDetail: Codable, Equatable, Identifiable {
     let description: String
     let coverKey: String?
     let authorName: String
+    let isFree: Bool
+    let storeProductId: String?
     let status: AdminPackStatus
     let sortOrder: Int
     let createdAt: String

@@ -6,6 +6,7 @@ import UIKit
 struct StickerDetailSheet: View {
     let sticker: Sticker
     let imageURL: URL
+    let bearerToken: String?
 
     @EnvironmentObject private var favorites: FavoritesStore
     @EnvironmentObject private var catalog: CatalogStore
@@ -22,11 +23,17 @@ struct StickerDetailSheet: View {
 
     private let exporter = StickerExporter()
 
+    init(sticker: Sticker, imageURL: URL, bearerToken: String? = nil) {
+        self.sticker = sticker
+        self.imageURL = imageURL
+        self.bearerToken = bearerToken
+    }
+
     var body: some View {
         VStack(spacing: 14) {
             ZStack {
                 Checkerboard()
-                StickerImageView(url: imageURL)
+                StickerImageView(url: imageURL, bearerToken: bearerToken)
                     .padding(16)
             }
             .frame(height: 150)
@@ -214,7 +221,10 @@ struct StickerDetailSheet: View {
 
     private func performShare(photo: UIImage) async {
         guard let jpeg = photo.jpegData(compressionQuality: 0.9),
-              let localURL = try? await catalog.localImageURL(for: sticker) else {
+              let localURL = try? await catalog.localImageURL(
+                for: sticker,
+                bearerToken: bearerToken
+              ) else {
             handle(.copyFailed)
             return
         }
@@ -229,7 +239,10 @@ struct StickerDetailSheet: View {
         isPreparingPhoto = true
         Task {
             defer { isPreparingPhoto = false }
-            guard let localURL = try? await catalog.localImageURL(for: sticker) else {
+            guard let localURL = try? await catalog.localImageURL(
+                for: sticker,
+                bearerToken: bearerToken
+            ) else {
                 handle(.copyFailed)
                 return
             }

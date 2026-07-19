@@ -12,7 +12,6 @@ const config = loadConfig({
   R2_ACCESS_KEY_ID: 'x',
   R2_SECRET_ACCESS_KEY: 'x',
   R2_BUCKET: 'x',
-  R2_PUBLIC_BASE_URL: 'https://cdn.example.com',
   MAIL_FROM: 'nao-responda@example.com',
 });
 

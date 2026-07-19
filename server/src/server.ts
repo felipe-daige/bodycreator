@@ -6,6 +6,7 @@ import { createR2Storage } from './storage/r2.js';
 import { createMemoryStorage } from './storage/memory.js';
 import type { Storage } from './storage/index.js';
 import { enforceSingleAdministrator } from './auth/ownerAccess.js';
+import { createAppleStoreTransactionVerifier } from './store/transactionVerifier.js';
 
 const config = loadConfig(process.env);
 
@@ -24,12 +25,13 @@ const mailer: Mailer = !config.RESEND_API_KEY && isDev
   : createResendMailer(config);
 
 const storage: Storage = config.R2_ACCOUNT_ID === 'dev' && isDev
-  ? createMemoryStorage(config.R2_PUBLIC_BASE_URL)
+  ? createMemoryStorage()
   : createR2Storage(config);
 
 const db = createDb(config.DATABASE_URL);
 await enforceSingleAdministrator(db, config.OWNER_ADMIN_EMAIL);
-const app = buildApp({ config, db, mailer, storage });
+const storeTransactionVerifier = createAppleStoreTransactionVerifier(config);
+const app = buildApp({ config, db, mailer, storage, storeTransactionVerifier });
 
 // Servir os objetos do storage em memória no modo dev, para a capa e as
 // figurinhas aparecerem no app.

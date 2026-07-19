@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @EnvironmentObject private var catalog: CatalogStore
+    @EnvironmentObject private var purchases: PurchaseStore
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @State private var showOnboarding = false
     @State private var pendingInvite: PendingInvite?
@@ -13,6 +14,13 @@ struct RootView: View {
             }
             .tabItem {
                 Label("Pacotes", systemImage: "square.grid.2x2")
+            }
+
+            NavigationStack {
+                PackStoreView()
+            }
+            .tabItem {
+                Label("Loja", systemImage: "bag")
             }
 
             NavigationStack {
@@ -33,6 +41,9 @@ struct RootView: View {
             showOnboarding = !hasCompletedOnboarding && pendingInvite == nil
         }
         .task { await catalog.refresh() }
+        .task(id: storefrontConfiguration) {
+            await purchases.load(packs: catalog.packs)
+        }
         .onOpenURL(perform: openDeepLink)
         .fullScreenCover(isPresented: $showOnboarding) {
             OnboardingView {
@@ -45,6 +56,12 @@ struct RootView: View {
                 pendingInvite = nil
             }
         }
+    }
+
+    private var storefrontConfiguration: String {
+        catalog.packs.map {
+            "\($0.id):\($0.free):\($0.productID ?? "-")"
+        }.joined(separator: "|")
     }
 
     private func openDeepLink(_ url: URL) {

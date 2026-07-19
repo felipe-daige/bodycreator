@@ -173,6 +173,45 @@ describe('PATCH /packs/:id', () => {
     });
     expect(res.statusCode).toBe(401);
   });
+
+  it('configura um pacote pago com Product ID único', async () => {
+    const cookie = await criarELogar('admin');
+    const { packId } = await criarPackComCategoria(cookie, 'premium');
+    const res = await app.inject({
+      method: 'PATCH', url: `/packs/${packId}`, headers: { cookie },
+      payload: { isFree: false, storeProductId: 'com.daige.bodycreator.pack.premium' },
+    });
+    expect(res.statusCode).toBe(200);
+
+    const detail = await app.inject({ method: 'GET', url: `/packs/${packId}`, headers: { cookie } });
+    expect(detail.json().isFree).toBe(false);
+    expect(detail.json().storeProductId).toBe('com.daige.bodycreator.pack.premium');
+  });
+
+  it('não aceita pacote pago sem Product ID', async () => {
+    const cookie = await criarELogar('admin');
+    const { packId } = await criarPackComCategoria(cookie, 'sem-produto');
+    const res = await app.inject({
+      method: 'PATCH', url: `/packs/${packId}`, headers: { cookie },
+      payload: { isFree: false },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toMatch(/ID do produto/i);
+  });
+
+  it('não liga o mesmo Product ID a dois pacotes', async () => {
+    const cookie = await criarELogar('admin');
+    const first = await criarPackComCategoria(cookie, 'premium-a');
+    const second = await criarPackComCategoria(cookie, 'premium-b');
+    const payload = { isFree: false, storeProductId: 'com.daige.bodycreator.pack.unico' };
+    expect((await app.inject({
+      method: 'PATCH', url: `/packs/${first.packId}`, headers: { cookie }, payload,
+    })).statusCode).toBe(200);
+    const duplicate = await app.inject({
+      method: 'PATCH', url: `/packs/${second.packId}`, headers: { cookie }, payload,
+    });
+    expect(duplicate.statusCode).toBe(409);
+  });
 });
 
 describe('POST /packs/:id/categories', () => {

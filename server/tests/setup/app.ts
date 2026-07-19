@@ -13,7 +13,7 @@ export function buildTestConfig(databaseUrl: string): Config {
   return loadConfig({
     NODE_ENV: 'test', DATABASE_URL: databaseUrl, SESSION_SECRET: 's'.repeat(32),
     R2_ACCOUNT_ID: 'x', R2_ACCESS_KEY_ID: 'x', R2_SECRET_ACCESS_KEY: 'x',
-    R2_BUCKET: 'x', R2_PUBLIC_BASE_URL: 'https://cdn.example.com',
+    R2_BUCKET: 'x',
     MAIL_FROM: 'nao-responda@exemplo.com',
   });
 }

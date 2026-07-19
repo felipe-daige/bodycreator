@@ -2,7 +2,10 @@ export type ManifestInput = {
   packs: Array<{
     slug: string;
     name: string;
+    description: string;
     coverKey: string | null;
+    isFree: boolean;
+    storeProductId: string | null;
     categories: Array<{ id: string; name: string; sortOrder: number }>;
     stickers: Array<{
       id: string; name: string; tags: string[];
@@ -14,7 +17,8 @@ export type ManifestInput = {
 export type Manifest = {
   version: number;
   packs: Array<{
-    id: string; name: string; cover: string; free: boolean;
+    id: string; name: string; description: string; cover: string;
+    free: boolean; productId: string | null;
     categories: Array<{
       id: string; name: string;
       stickers: Array<{ id: string; name: string; tags: string[]; file: string }>;
@@ -49,9 +53,12 @@ export function buildManifest(input: ManifestInput, version: number): Manifest {
       .filter((cat) => cat.stickers.length > 0);
 
     return {
-      id: pack.slug, name: pack.name, cover: pack.coverKey,
-      // free continua true no P1: preço entra no P3.
-      free: true,
+      id: pack.slug,
+      name: pack.name,
+      description: pack.description,
+      cover: pack.coverKey,
+      free: pack.isFree,
+      productId: pack.isFree ? null : pack.storeProductId,
       categories,
     };
   }).filter((pack) => pack.categories.length > 0);

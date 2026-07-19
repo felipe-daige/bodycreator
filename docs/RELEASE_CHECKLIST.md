@@ -20,6 +20,12 @@
 - [ ] Confirmar criação de pacote e upload pelo app Arquivos.
 - [ ] Publicar o catálogo no app, puxar para atualizar a aba Pacotes e confirmar que
       o novo conteúdo continua disponível depois de ficar offline.
+- [ ] Na aba **Loja**, confirmar que todos os pacotes pagos exibem o preço e a
+      moeda localizados pela App Store, sem preço manual no catálogo.
+- [ ] Em iPhone físico e ambiente Sandbox, testar compra aprovada, cancelada e
+      pendente; confirmar que só a aprovada libera o pacote e o download dos PNGs.
+- [ ] Tocar em **Restaurar compras**, reinstalar o app e confirmar que os pacotes
+      não consumíveis voltam com a mesma Conta Apple.
 - [ ] Confirmar que “Excluir minha conta” anonimiza a conta e encerra a sessão.
 - [ ] Reinstalar o app e confirmar que o onboarding aparece apenas na primeira abertura.
 - [ ] Conferir todos os textos visíveis em pt-BR e testar com tamanho de fonte maior.
@@ -27,13 +33,23 @@
 ## Antes do primeiro envio
 
 - [ ] Substituir `Content/packs/exemplo` pelas artes finais e rodar o validador.
+- [ ] Remover o pacote `premium-exemplo` do manifesto embutido ou substituir seu
+      Product ID de demonstração por um produto real aprovado no App Store Connect.
 - [ ] Substituir o ícone provisório em `App/Assets.xcassets/AppIcon.appiconset/AppIcon.png` pela identidade final (1024×1024, sem alfa).
 - [ ] Criar um app em https://developers.facebook.com/apps, copiar o número do App ID e preencher `InstagramSharing.facebookAppID` (Export/InstagramSharing.swift).
 - [ ] Confirmar disponibilidade do nome “Body Creator” no App Store Connect.
 - [ ] Confirmar o bundle id `com.daige.bodycreator` e selecionar a equipe da conta Apple Developer.
 - [ ] Trocar `API_BASE_URL` de Release em `project.yml` pelo domínio real da API.
+- [ ] Criar no App Store Connect uma compra **não consumível** por pacote pago,
+      cadastrar localização/preço/captura de revisão e mapear exatamente o mesmo
+      Product ID em **Configurações → Pacotes e figurinhas**.
+- [ ] Preencher `APP_BUNDLE_ID` e `APP_APPLE_ID` no `.env` de produção e manter o
+      bucket R2 privado.
 - [ ] Preencher a ficha de privacidade com nome, e-mail e identificador de usuário,
-      vinculados à conta e usados somente para funcionalidade administrativa; sem rastreamento.
+      vinculados à conta e usados somente para funcionalidade administrativa; e
+      histórico de compras não vinculado, usado para liberar conteúdo; sem rastreamento.
+- [ ] Enviar a primeira compra dentro do app junto da versão, deixá-la disponível
+      para a App Review e citar **Loja → Restaurar compras** nas notas de revisão.
 - [ ] Fornecer à App Review a conta proprietária demo e instruções para chegar à
       aba **Configurações** e entrar na conta.
 - [ ] Publicar política de privacidade e URL de suporte incluindo armazenamento dos

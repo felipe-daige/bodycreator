@@ -22,6 +22,7 @@ struct RemoteCatalogSnapshot: Codable, Equatable {
 
 enum RemoteCatalogError: LocalizedError, Equatable {
     case unavailable(String)
+    case notPublished
     case invalidResponse
     case checksumMismatch
     case invalidAsset
@@ -29,6 +30,7 @@ enum RemoteCatalogError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case let .unavailable(message): return message
+        case .notPublished: return "O catálogo ainda não foi publicado."
         case .invalidResponse: return "O catálogo publicado está inválido."
         case .checksumMismatch: return "A verificação de integridade do catálogo falhou."
         case .invalidAsset: return "A figurinha baixada não é um PNG válido."
@@ -63,7 +65,15 @@ struct RemoteCatalogRepository {
     }
 
     func refresh() async throws -> RemoteCatalogSnapshot {
-        let pointerData = try await download(pointerURL)
+        let (pointerData, pointerResponse) = try await fetch(pointerURL)
+        // 404 no ponteiro significa "ainda não publicado": um estado normal, não
+        // um erro. O app mantém o conteúdo local sem alarmar quem usa.
+        if pointerResponse.statusCode == 404 {
+            throw RemoteCatalogError.notPublished
+        }
+        guard (200...299).contains(pointerResponse.statusCode) else {
+            throw unavailable(from: pointerData)
+        }
         let pointer: CatalogPointer
         do {
             pointer = try JSONDecoder().decode(CatalogPointer.self, from: pointerData)
@@ -154,6 +164,14 @@ struct RemoteCatalogRepository {
     }
 
     private func download(_ url: URL, bearerToken: String? = nil) async throws -> Data {
+        let (data, http) = try await fetch(url, bearerToken: bearerToken)
+        guard (200...299).contains(http.statusCode) else {
+            throw unavailable(from: data)
+        }
+        return data
+    }
+
+    private func fetch(_ url: URL, bearerToken: String? = nil) async throws -> (Data, HTTPURLResponse) {
         let data: Data
         let response: URLResponse
         do {
@@ -170,15 +188,16 @@ struct RemoteCatalogRepository {
         guard let http = response as? HTTPURLResponse else {
             throw RemoteCatalogError.invalidResponse
         }
-        guard (200...299).contains(http.statusCode) else {
-            if let envelope = try? JSONDecoder().decode(CatalogErrorEnvelope.self, from: data) {
-                throw RemoteCatalogError.unavailable(envelope.error)
-            }
-            throw RemoteCatalogError.unavailable(
-                "Não foi possível atualizar o catálogo. O conteúdo salvo continua disponível."
-            )
+        return (data, http)
+    }
+
+    private func unavailable(from data: Data) -> RemoteCatalogError {
+        if let envelope = try? JSONDecoder().decode(CatalogErrorEnvelope.self, from: data) {
+            return .unavailable(envelope.error)
         }
-        return data
+        return .unavailable(
+            "Não foi possível atualizar o catálogo. O conteúdo salvo continua disponível."
+        )
     }
 }
 

@@ -5,9 +5,12 @@ final class CatalogStore: ObservableObject {
     @Published private(set) var packs: [StickerPack] = []
     @Published private(set) var isRefreshing = false
     @Published private(set) var refreshMessage: String?
+    @Published private(set) var usingRemoteCatalog = false
+    @Published private(set) var didJustUpdate = false
     private let loader: ManifestLoader
     private let remote: RemoteCatalogRepository?
     private var remoteSnapshot: RemoteCatalogSnapshot?
+    private var successResetTask: Task<Void, Never>?
 
     init(loader: ManifestLoader, remote: RemoteCatalogRepository? = nil) {
         self.loader = loader
@@ -44,16 +47,38 @@ final class CatalogStore: ObservableObject {
         do {
             let snapshot = try await remote.refresh()
             apply(snapshot)
+            flashSuccess()
+        } catch RemoteCatalogError.notPublished {
+            // Nenhum catálogo publicado ainda: estado benigno. O conteúdo local
+            // continua ativo e o usuário comum não vê aviso técnico algum.
+            refreshMessage = nil
         } catch {
-            // Bundle/cache permanecem ativos. A mensagem é informativa e uma
-            // falha de rede nunca esvazia a biblioteca que já funciona.
+            // Bundle/cache permanecem ativos. A mensagem é informativa (e só o
+            // administrador a vê na interface); uma falha nunca esvazia a
+            // biblioteca que já funciona.
             refreshMessage = error.localizedDescription
         }
     }
 
     private func apply(_ snapshot: RemoteCatalogSnapshot) {
         remoteSnapshot = snapshot
-        packs = snapshot.manifest.packs
+        usingRemoteCatalog = true
+        // Só troca o catálogo quando o conteúdo muda de fato: evita recarregar a
+        // lista inteira (e o cascade de StoreKit) a cada atualização sem novidade.
+        if packs != snapshot.manifest.packs {
+            packs = snapshot.manifest.packs
+        }
+    }
+
+    /// Marca um pulso de sucesso que a interface mostra por um instante.
+    private func flashSuccess() {
+        successResetTask?.cancel()
+        didJustUpdate = true
+        successResetTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_800_000_000)
+            guard !Task.isCancelled else { return }
+            self?.didJustUpdate = false
+        }
     }
 
     func imageURL(for sticker: Sticker) -> URL {

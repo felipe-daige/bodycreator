@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import { promises as fs } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createMemoryStorage } from '../../src/storage/memory.js';
 import { isMutablePointer, isNotFoundError } from '../../src/storage/r2.js';
 
@@ -12,6 +15,29 @@ describe('memory storage', () => {
 
   it('devolve null para chave inexistente', async () => {
     expect(await createMemoryStorage().get('não/existe.png')).toBeNull();
+  });
+
+  it('persiste em disco e relê após "reiniciar" quando recebe um diretório', async () => {
+    const dir = await fs.mkdtemp(join(tmpdir(), 'bc-dev-storage-'));
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x01, 0x02, 0x03]);
+
+    const primeiro = createMemoryStorage(dir);
+    await primeiro.put('catalog/current.json', Buffer.from('{"version":1}'), 'application/json');
+    await primeiro.put('packs/harmonizacao/seta.png', png, 'image/png');
+
+    // Uma nova instância simula o servidor reiniciando: recarrega do disco.
+    const segundo = createMemoryStorage(dir);
+    expect((await segundo.get('catalog/current.json'))?.toString()).toBe('{"version":1}');
+    expect(await segundo.get('packs/harmonizacao/seta.png')).toEqual(png);
+
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  it('recusa chave com "…/.." que escaparia do diretório de dev', async () => {
+    const dir = await fs.mkdtemp(join(tmpdir(), 'bc-dev-storage-'));
+    const s = createMemoryStorage(dir);
+    await expect(s.put('../fora.png', Buffer.from([0]), 'image/png')).rejects.toThrow();
+    await fs.rm(dir, { recursive: true, force: true });
   });
 });
 

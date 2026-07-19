@@ -12,3 +12,6 @@ App/Info.plist
 
 # Segredos de produção — só existem no VPS, nunca no repo
 infra/.env
+
+# Storage do modo dev (memory storage persistido em disco) — só local
+server/.dev-storage/

@@ -26,10 +26,14 @@ private struct SettingsListView: View {
                     Task { await catalog.refresh() }
                 } label: {
                     HStack {
-                        Label("Atualizar catálogo", systemImage: "arrow.clockwise")
+                        Label("Atualizar catálogo", systemImage: "arrow.triangle.2.circlepath")
                         Spacer()
-                        if catalog.isRefreshing { ProgressView() }
+                        RefreshStatusIcon(
+                            isRefreshing: catalog.isRefreshing,
+                            didJustUpdate: catalog.didJustUpdate
+                        )
                     }
+                    .contentShape(Rectangle())
                 }
                 .disabled(catalog.isRefreshing)
                 .accessibilityIdentifier("settings-refresh")
@@ -45,12 +49,18 @@ private struct SettingsListView: View {
                     .accessibilityIdentifier("owner-content-management")
                 }
 
-                if let message = catalog.refreshMessage {
+                // Mensagens técnicas de catálogo são só para o administrador.
+                // O usuário comum nunca vê aviso de "não publicado" ou falha de rede.
+                if auth.isOwnerAdministrator, let message = catalog.refreshMessage {
                     Text(message)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                        .transition(.opacity)
                 }
             }
+            .animation(.easeInOut(duration: 0.25), value: catalog.isRefreshing)
+            .animation(.easeInOut(duration: 0.25), value: catalog.didJustUpdate)
+            .animation(.easeInOut(duration: 0.25), value: catalog.refreshMessage)
 
             Section("Conta") {
                 switch auth.phase {
@@ -94,5 +104,27 @@ private struct SettingsListView: View {
 
     private var appVersion: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+    }
+}
+
+/// Ícone de estado do botão de atualizar catálogo: giro enquanto atualiza,
+/// um "check" verde discreto ao concluir e nada em repouso. As transições são
+/// animadas pela seção que o contém.
+private struct RefreshStatusIcon: View {
+    let isRefreshing: Bool
+    let didJustUpdate: Bool
+
+    var body: some View {
+        ZStack {
+            if isRefreshing {
+                ProgressView()
+                    .transition(.opacity)
+            } else if didJustUpdate {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .frame(width: 22, height: 22)
     }
 }

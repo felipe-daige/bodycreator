@@ -42,6 +42,8 @@ npm run seed:admin    # reads ADMIN_SEED_EMAIL / ADMIN_SEED_PASSWORD from env; i
 
 Beware: a Homebrew Postgres on the host can shadow a dev container on :5432 (hence the 54320 mapping); the test container on :55432 is unaffected.
 
+In dev (`R2_ACCOUNT_ID=dev`), the in-memory storage also persists to `server/.dev-storage/` (gitignored) and reloads on boot, so a published catalog survives a server restart. `createMemoryStorage()` with no argument stays pure in-memory (tests). Production always uses R2.
+
 ### Architecture
 
 `buildApp(deps)` in `src/app.ts` is a factory that never calls `listen()` — tests inject `AppDeps = { config, db, mailer, storage, storeTransactionVerifier? }` with `createFakeMailer()`, `createMemoryStorage()` and a fake purchase verifier when needed. Adding a required dependency to `AppDeps` means updating every `buildApp` call in tests.

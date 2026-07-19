@@ -4,13 +4,15 @@ import SwiftUI
 struct StickerImageView: View {
     let url: URL
     let bearerToken: String?
+    let fill: Bool
     @EnvironmentObject private var catalog: CatalogStore
     @State private var image: UIImage?
     @State private var isLoading = true
 
-    init(url: URL, bearerToken: String? = nil) {
+    init(url: URL, bearerToken: String? = nil, fill: Bool = false) {
         self.url = url
         self.bearerToken = bearerToken
+        self.fill = fill
     }
 
     var body: some View {
@@ -18,7 +20,7 @@ struct StickerImageView: View {
             if let image {
                 Image(uiImage: image)
                     .resizable()
-                    .scaledToFit()
+                    .aspectRatio(contentMode: fill ? .fill : .fit)
             } else if isLoading {
                 ProgressView()
             }

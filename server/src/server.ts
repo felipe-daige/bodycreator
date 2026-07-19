@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { buildApp } from './app.js';
 import { loadConfig } from './config.js';
 import { createDb } from './db/index.js';
@@ -24,8 +25,10 @@ const mailer: Mailer = !config.RESEND_API_KEY && isDev
     }
   : createResendMailer(config);
 
+// Em dev, o storage em memória também persiste em `server/.dev-storage`, para
+// que um catálogo publicado continue disponível depois de reiniciar o servidor.
 const storage: Storage = config.R2_ACCOUNT_ID === 'dev' && isDev
-  ? createMemoryStorage()
+  ? createMemoryStorage(join(process.cwd(), '.dev-storage'))
   : createR2Storage(config);
 
 const db = createDb(config.DATABASE_URL);

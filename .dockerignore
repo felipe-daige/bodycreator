@@ -41,7 +41,7 @@ UITests
 project.yml
 
 # Metadados de projeto/documentação — não usados dentro da imagem
-docs
+/docs/
 .superpowers
 .claude
 

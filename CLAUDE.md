@@ -12,7 +12,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `server/` | Backend API (Fastify 5 + Drizzle/Postgres 16, TypeScript). Owner-only content management, sticker upload, versioned catalog publishing to Cloudflare R2. |
 | `infra/` | Production: Docker Compose, Caddy, backup scripts. Ops runbook in `docs/OPERACAO.md` (pt-BR). |
 
-Specs live in `docs/superpowers/specs/`: `2026-07-17-figurinhas-stories-design.md` (iOS MVP; read §5b before touching Instagram), `2026-07-18-infoproduto-p1-backend-admin-design.md` (historical P1 API/web design), and `2026-07-18-native-administration-remote-catalog-design.md` (current native-admin decision; supersedes the web panel). Execution ledger: `.superpowers/sdd/progress.md`.
+`CLAUDE.md` is the standard, versioned project memory. Any additional plans,
+specs, runbooks or release notes belong under `docs/`, which is intentionally
+ignored by Git and Docker; preserve those local files and never force-add them.
+The local execution ledger is `.superpowers/sdd/progress.md`.
 
 Internal iOS names are still `Figurinhas` (target, scheme, `Figurinhas.xcodeproj`) while the product is "Body Creator" — deliberate, not drift.
 
@@ -30,7 +33,7 @@ Internal iOS names are still `Figurinhas` (target, scheme, `Figurinhas.xcodeproj
 ```bash
 docker compose -f infra/docker-compose.dev.yml up -d   # dev DB :54320, test DB :55432 (tmpfs)
 cd server
-npm test              # 178 tests; integration tests need the :55432 container
+npm test              # 186 tests; integration tests need the :55432 container
 npm test -- invites   # filter by file name
 npm run dev           # tsx watch, http://localhost:3000
 npm run db:generate   # after editing src/db/schema.ts — then inspect the SQL in drizzle/
@@ -41,7 +44,7 @@ Beware: a Homebrew Postgres on the host can shadow a dev container on :5432 (hen
 
 ### Architecture
 
-`buildApp(deps)` in `src/app.ts` is a factory that never calls `listen()` — tests inject `AppDeps = { config, db, mailer, storage }` with `createFakeMailer()` and `createMemoryStorage()`. Adding a dependency to `AppDeps` means updating every `buildApp` call in tests.
+`buildApp(deps)` in `src/app.ts` is a factory that never calls `listen()` — tests inject `AppDeps = { config, db, mailer, storage, storeTransactionVerifier? }` with `createFakeMailer()`, `createMemoryStorage()` and a fake purchase verifier when needed. Adding a required dependency to `AppDeps` means updating every `buildApp` call in tests.
 
 Auth: signed cookie carries only the userId; **the user is re-read from the DB on every request** (`requireAuth`), so disabling an account takes effect on the next request. There is deliberately no session table. `mustChangePassword` is enforced server-side in `requireAuth` (allowlist: `/auth/me`, `/auth/change-password`, `/auth/logout`). Account deletion anonymizes the referenced user row instead of breaking audit/content foreign keys.
 
@@ -74,7 +77,7 @@ Audit: `recordAudit()` recursively strips password/token fields from payloads be
 
 ### Generated files — never edit by hand
 
-`project.yml` (XcodeGen) is the single source of truth. Both are generated and gitignored: `Figurinhas.xcodeproj` and `App/Info.plist` (hand edits are silently discarded; change `targets.Figurinhas.info.properties` in `project.yml`). **Run `xcodegen generate` after any `project.yml` change and after adding any file** — sources are static lists.
+`project.yml` (XcodeGen) is the single source of truth. Both are generated and gitignored: `Figurinhas.xcodeproj` and `App/Info.plist` (hand edits are silently discarded; change `targets.Figurinhas.info.properties` in `project.yml`). **Run `xcodegen generate` after any `project.yml` change and after adding any file** — sources are static lists. Its post-generation hook applies the In-App Purchase capability; do not remove `Scripts/enable_iap_capability.py` or add the capability only by hand in Xcode.
 
 ### Commands
 
@@ -99,6 +102,10 @@ purchase restoration and server download tokens. `StickerPack.productID` maps a
 paid package to one non-consumable App Store Connect product. Price is always
 `Product.displayPrice`; never add a price field to the database or manifest.
 The local `Store/BodyCreator.storekit` file is active only in the Run scheme.
+That Run scheme also overrides the API with
+`http://MacBook-Pro-de-Felipe.local:3000`, allowing a physical iPhone on the
+same network to reach the development server. Production archives use the
+Release `API_BASE_URL`, not this override.
 
 `Content/` is bundle content: `manifest.json` + PNG folders, validated by a **pre-build phase that fails the build** on: missing file, duplicate id, PNG without alpha, >2 MB, longest side outside 512–2048 px. The server upload enforces the identical rules.
 

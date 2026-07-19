@@ -7,5 +7,8 @@ xcuserdata/
 App/Info.plist
 .superpowers/brainstorm/
 
+# Documentação de trabalho é local. A memória padrão versionada é CLAUDE.md.
+/docs/
+
 # Segredos de produção — só existem no VPS, nunca no repo
 infra/.env

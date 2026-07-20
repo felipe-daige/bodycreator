@@ -71,3 +71,49 @@ describe('buildManifest', () => {
     expect(typeof m.packs[0]!.cover).toBe('string');
   });
 });
+
+describe('buildManifest storefront', () => {
+  const dois = {
+    packs: [
+      { ...input.packs[0]!, slug: 'pack-a' },
+      { ...input.packs[0]!, slug: 'pack-b' },
+    ],
+  };
+
+  it('sem rascunho: sintetiza seção única "Pacotes" na ordem dos packs', () => {
+    const m = buildManifest(dois, 1);
+    expect(m.storefront.hero).toBeNull();
+    expect(m.storefront.sections).toEqual([
+      { id: 'todos', title: 'Pacotes', packs: ['pack-a', 'pack-b'] },
+    ]);
+  });
+
+  it('cura seções, filtra slug inexistente e descarta seção vazia', () => {
+    const m = buildManifest(dois, 1, {
+      hero: 'pack-a',
+      sections: [
+        { id: 's1', title: 'Novidades', packs: ['pack-b', 'fantasma'] },
+        { id: 's2', title: 'Vazia', packs: ['fantasma'] },
+      ],
+    });
+    expect(m.storefront.hero).toBe('pack-a');
+    expect(m.storefront.sections).toEqual([
+      { id: 's1', title: 'Novidades', packs: ['pack-b'] },
+    ]);
+  });
+
+  it('herói não publicado vira null', () => {
+    const m = buildManifest(dois, 1, { hero: 'fantasma', sections: [] });
+    expect(m.storefront.hero).toBeNull();
+  });
+
+  it('packs não atribuídos caem em "Mais pacotes" (exceto o herói)', () => {
+    const m = buildManifest(dois, 1, {
+      hero: 'pack-a',
+      sections: [{ id: 's1', title: 'Novidades', packs: [] }],
+    });
+    expect(m.storefront.sections).toEqual([
+      { id: 'mais-pacotes', title: 'Mais pacotes', packs: ['pack-b'] },
+    ]);
+  });
+});

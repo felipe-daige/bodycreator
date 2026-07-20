@@ -46,7 +46,7 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
       configs:
         Debug:
-          API_BASE_URL: "http://127.0.0.1:3000"
+          API_BASE_URL: "https://api-bodycreator.jusdock.com.br"
         Release:
           API_BASE_URL: "https://api-bodycreator.jusdock.com.br"
     info:
@@ -106,6 +106,8 @@ schemes:
       config: Debug
       storeKitConfiguration: Store/BodyCreator.storekit
       environmentVariables:
-        # Roteia o Run (simulador/celular) para a VPS. Para dev local,
-        # troque para o host do Mac (ex.: http://MacBook-Pro-de-Felipe.local:3000).
+        # Debug já aponta para a VPS (ver API_BASE_URL acima), então abrir o app
+        # pelo ícone no iPhone também funciona. Esta env var só é aplicada quando
+        # o Xcode lança o app (Run) e serve de override para dev local: troque
+        # para o host do Mac (ex.: http://MacBook-Pro-de-Felipe.local:3000).
         BODYCREATOR_API_URL: https://api-bodycreator.jusdock.com.br

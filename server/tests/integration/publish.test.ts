@@ -85,6 +85,17 @@ describe('POST /publish', () => {
     const manifest = JSON.parse((await storage.get(`catalog/v${res.json().version}.json`))!.toString());
     expect(manifest.packs.map((p: { id: string }) => p.id)).toEqual(['pack-a', 'pack-b']);
   });
+
+  it('fotografa a vitrine salva dentro do manifesto', async () => {
+    const cookie = await criarELogar('admin');
+    await criarPackPublicavel(cookie, 'pack-a');
+    await app.inject({ method: 'PUT', url: '/storefront', headers: { cookie },
+      payload: { hero: 'pack-a', sections: [{ id: 's1', title: 'Novidades', packs: ['pack-a'] }] } });
+    const res = await app.inject({ method: 'POST', url: '/publish', headers: { cookie } });
+    const manifest = JSON.parse((await storage.get(`catalog/v${res.json().version}.json`))!.toString());
+    expect(manifest.storefront.hero).toBe('pack-a');
+    expect(manifest.storefront.sections[0]).toEqual({ id: 's1', title: 'Novidades', packs: ['pack-a'] });
+  });
 });
 
 describe('POST /publish/rollback', () => {

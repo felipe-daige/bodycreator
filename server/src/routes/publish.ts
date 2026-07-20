@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { eq, desc, asc } from 'drizzle-orm';
 import { z } from 'zod';
-import { packs, categories, stickers, catalogVersions } from '../db/schema.js';
+import { packs, categories, stickers, catalogVersions, storefront } from '../db/schema.js';
 import { requireAuth, requirePermission } from '../auth/guards.js';
 import { buildManifest, type ManifestInput } from '../content/manifest.js';
 import { recordAudit } from '../audit.js';
@@ -40,7 +40,8 @@ export async function publishRoutes(app: FastifyInstance) {
       .orderBy(desc(catalogVersions.version)).limit(1);
     const version = (ultima?.version ?? 0) + 1;
 
-    const manifest = buildManifest(input, version);
+    const [sf] = await db.select().from(storefront).limit(1);
+    const manifest = buildManifest(input, version, sf?.config ?? null);
     const body = Buffer.from(JSON.stringify(manifest, null, 2));
     const manifestKey = `catalog/v${version}.json`;
     const checksum = createHash('sha256').update(body).digest('hex');

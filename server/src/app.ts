@@ -15,6 +15,7 @@ import { packRoutes } from './routes/packs.js';
 import { stickerRoutes } from './routes/stickers.js';
 import { publishRoutes } from './routes/publish.js';
 import { catalogRoutes } from './routes/catalog.js';
+import { storefrontRoutes } from './routes/storefront.js';
 import { storeRoutes } from './routes/store.js';
 import type { StoreTransactionVerifier } from './store/transactionVerifier.js';
 
@@ -73,6 +74,7 @@ export function buildApp(deps: AppDeps): FastifyInstance {
   app.register(stickerRoutes);
   app.register(publishRoutes);
   app.register(catalogRoutes);
+  app.register(storefrontRoutes);
   app.register(storeRoutes);
   return app;
 }

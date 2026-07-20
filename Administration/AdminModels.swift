@@ -82,6 +82,17 @@ struct CatalogPublication: Codable, Equatable {
     let checksum: String
 }
 
+struct StorefrontSectionDraft: Codable, Equatable, Identifiable {
+    var id: String
+    var title: String
+    var packs: [String]
+}
+
+struct StorefrontConfigDraft: Codable, Equatable {
+    var hero: String?
+    var sections: [StorefrontSectionDraft]
+}
+
 struct OKResponse: Codable, Equatable {
     let ok: Bool
 }

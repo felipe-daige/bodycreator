@@ -111,6 +111,12 @@ struct AdminService {
     }
 
     func publishCatalog() async throws -> CatalogPublication { try await api.post("publish") }
+
+    func storefront() async throws -> StorefrontConfigDraft { try await api.get("storefront") }
+
+    func saveStorefront(_ config: StorefrontConfigDraft) async throws {
+        let _: StorefrontConfigDraft = try await api.put("storefront", body: config)
+    }
 }
 
 private struct LoginBody: Encodable { let email: String; let password: String }

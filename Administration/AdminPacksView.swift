@@ -31,6 +31,13 @@ struct AdminPacksView: View {
                         Label(publicationMessage, systemImage: "checkmark.circle.fill")
                             .foregroundStyle(.green)
                     }
+
+                    NavigationLink {
+                        StorefrontEditorView()
+                    } label: {
+                        Label("Vitrine da Loja", systemImage: "rectangle.3.group")
+                    }
+                    .accessibilityIdentifier("owner-storefront")
                 }
             }
 

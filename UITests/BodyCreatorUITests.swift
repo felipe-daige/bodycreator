@@ -79,20 +79,29 @@ final class BodyCreatorUITests: XCTestCase {
     }
 
     @MainActor
-    func testStoreOffersPurchaseRestoration() throws {
+    func testStoreShowsSectionsAndRestore() throws {
         let app = XCUIApplication()
         app.launch()
         finishOnboardingIfNeeded(in: app)
 
         app.tabBars.buttons["Loja"].tap()
-
         XCTAssertTrue(app.navigationBars["Loja"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["restore-purchases"].exists)
+
+        // Pacote grátis do bundle aparece como card na seção "Pacotes".
+        let card = app.descendants(matching: .any)["store-pack-exemplo"]
+        XCTAssertTrue(card.waitForExistence(timeout: 5))
+        card.tap()
+
+        // Detalhe abre; grátis = já liberado → "Abrir pacote".
+        XCTAssertTrue(app.buttons["Abrir pacote"].waitForExistence(timeout: 5))
 
         let storeScreenshot = XCTAttachment(screenshot: app.screenshot())
-        storeScreenshot.name = "Loja"
+        storeScreenshot.name = "Loja - detalhe do pacote"
         storeScreenshot.lifetime = .keepAlways
         add(storeScreenshot)
+
+        app.buttons["Fechar"].tap()
+        XCTAssertTrue(app.buttons["restore-purchases"].waitForExistence(timeout: 3))
     }
 
     @MainActor

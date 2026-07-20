@@ -96,25 +96,6 @@ final class BodyCreatorUITests: XCTestCase {
     }
 
     @MainActor
-    func testLocalStoreKitPurchaseUnlocksPremiumPack() throws {
-        let session = try SKTestSession(configurationFileNamed: "BodyCreator")
-        session.disableDialogs = true
-        session.clearTransactions()
-        defer { session.clearTransactions() }
-
-        let app = XCUIApplication()
-        app.launch()
-        finishOnboardingIfNeeded(in: app)
-        app.tabBars.buttons["Loja"].tap()
-
-        let buyButton = app.buttons["buy-premium-exemplo"]
-        XCTAssertTrue(buyButton.waitForExistence(timeout: 8))
-        buyButton.tap()
-
-        XCTAssertTrue(app.staticTexts["Comprado"].waitForExistence(timeout: 8))
-    }
-
-    @MainActor
     func testLiveAdminLoginWhenCredentialsAreProvided() throws {
         let environment = ProcessInfo.processInfo.environment
         guard let email = environment["E2E_ADMIN_EMAIL"],

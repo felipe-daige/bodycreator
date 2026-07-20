@@ -48,7 +48,7 @@ targets:
         Debug:
           API_BASE_URL: "http://127.0.0.1:3000"
         Release:
-          API_BASE_URL: "https://api.seudominio.com.br"
+          API_BASE_URL: "https://api-bodycreator.jusdock.com.br"
     info:
       path: App/Info.plist
       properties:
@@ -106,4 +106,6 @@ schemes:
       config: Debug
       storeKitConfiguration: Store/BodyCreator.storekit
       environmentVariables:
-        BODYCREATOR_API_URL: http://MacBook-Pro-de-Felipe.local:3000
+        # Roteia o Run (simulador/celular) para a VPS. Para dev local,
+        # troque para o host do Mac (ex.: http://MacBook-Pro-de-Felipe.local:3000).
+        BODYCREATOR_API_URL: https://api-bodycreator.jusdock.com.br

@@ -25,8 +25,13 @@ struct AdminPacksView: View {
                             systemImage: "icloud.and.arrow.up"
                         )
                     }
-                    .disabled(isPublishingCatalog)
+                    .disabled(isPublishingCatalog || !hasPublishedPack)
                     .accessibilityIdentifier("publish-catalog")
+                    if !hasPublishedPack {
+                        Text("Publique ao menos um pacote (na lista abaixo) antes de atualizar o catálogo.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                     if let publicationMessage {
                         Label(publicationMessage, systemImage: "checkmark.circle.fill")
                             .foregroundStyle(.green)
@@ -100,6 +105,8 @@ struct AdminPacksView: View {
         }
     }
 
+    private var hasPublishedPack: Bool { packs.contains { $0.status == .published } }
+
     private func load() async {
         isLoading = true
         errorMessage = nil
@@ -118,8 +125,8 @@ struct AdminPacksView: View {
         Task {
             defer { isPublishingCatalog = false }
             do {
-                let result = try await auth.service.publishCatalog()
-                publicationMessage = "Versão \(result.version) publicada."
+                _ = try await auth.service.publishCatalog()
+                publicationMessage = "Catálogo atualizado."
                 await catalog.refresh()
             } catch {
                 auth.consume(error)

@@ -68,7 +68,7 @@ struct StorefrontEditorView: View {
 
     private func sectionEditor(_ section: Binding<StorefrontSectionDraft>) -> some View {
         let id = section.wrappedValue.id
-        return Section {
+        return Section("Seção") {
             TextField("Título da seção", text: section.title)
             ForEach(section.wrappedValue.packs, id: \.self) { slug in
                 Text(packName(slug))
@@ -87,15 +87,11 @@ struct StorefrontEditorView: View {
                     }
                 }
             }
-        } header: {
-            HStack {
-                Text("Seção")
-                Spacer()
-                Button(role: .destructive) { removeSection(id) } label: {
-                    Image(systemName: "trash")
-                }
-                .accessibilityLabel("Excluir seção")
+
+            Button(role: .destructive) { removeSection(id) } label: {
+                Label("Excluir seção", systemImage: "trash")
             }
+            .accessibilityIdentifier("delete-section")
         }
     }
 
@@ -155,7 +151,7 @@ struct StorefrontEditorView: View {
             publishedPacks = try await packs.filter { $0.status == .published }
         } catch {
             auth.consume(error)
-            errorMessage = error.localizedDescription
+            errorMessage = friendly(error)
         }
     }
 
@@ -170,8 +166,18 @@ struct StorefrontEditorView: View {
                 message = "Vitrine salva. Publique o catálogo para os clientes verem."
             } catch {
                 auth.consume(error)
-                errorMessage = error.localizedDescription
+                errorMessage = friendly(error)
             }
         }
+    }
+
+    /// Traduz erros técnicos em mensagem útil. Em especial, um 404 aqui significa
+    /// que o servidor ainda não tem as rotas de Vitrine (backend desatualizado).
+    private func friendly(_ error: Error) -> String {
+        if let apiError = error as? APIError,
+           case let .server(status, _) = apiError, status == 404 {
+            return "Este servidor ainda não tem o recurso de Vitrine. Atualize o backend (deploy) para organizar a Loja por aqui."
+        }
+        return error.localizedDescription
     }
 }

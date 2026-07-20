@@ -9,7 +9,7 @@ final class BodyCreatorUITests: XCTestCase {
     @MainActor
     func testCoreStickerFlow() throws {
         let app = XCUIApplication()
-        app.launch()
+        launchOffline(app)
 
         finishOnboardingIfNeeded(in: app)
 
@@ -65,7 +65,7 @@ final class BodyCreatorUITests: XCTestCase {
     @MainActor
     func testSettingsAreDesignedForARegularUser() throws {
         let app = XCUIApplication()
-        app.launch()
+        launchOffline(app)
         finishOnboardingIfNeeded(in: app)
 
         app.tabBars.buttons["Configurações"].tap()
@@ -81,7 +81,7 @@ final class BodyCreatorUITests: XCTestCase {
     @MainActor
     func testStoreShowsSectionsAndRestore() throws {
         let app = XCUIApplication()
-        app.launch()
+        launchOffline(app)
         finishOnboardingIfNeeded(in: app)
 
         app.tabBars.buttons["Loja"].tap()
@@ -132,6 +132,15 @@ final class BodyCreatorUITests: XCTestCase {
         app.buttons["account-login"].tap()
 
         XCTAssertTrue(app.staticTexts["Troque sua senha"].waitForExistence(timeout: 8))
+    }
+
+    /// Lança o app em modo hermético (sem catálogo remoto: nem rede nem cache em
+    /// disco), usando só o conteúdo embutido. Assim os testes independem do que
+    /// está publicado no servidor e de para onde o build Debug aponta.
+    @MainActor
+    private func launchOffline(_ app: XCUIApplication) {
+        app.launchEnvironment["UITEST_BUNDLED_ONLY"] = "1"
+        app.launch()
     }
 
     @MainActor

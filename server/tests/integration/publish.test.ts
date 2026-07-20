@@ -65,6 +65,12 @@ describe('POST /publish', () => {
     expect(res.statusCode).toBe(401);
   });
 
+  it('recusa publicar quando não há pacote publicado (catálogo vazio)', async () => {
+    const cookie = await criarELogar('admin');
+    const res = await app.inject({ method: 'POST', url: '/publish', headers: { cookie } });
+    expect(res.statusCode).toBe(400);
+  });
+
   it('ordena os pacotes do manifesto por sortOrder, não pela ordem de criação', async () => {
     const cookie = await criarELogar('admin');
     // Criado primeiro, mas fica com sortOrder maior — sem ORDER BY o SELECT

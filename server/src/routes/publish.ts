@@ -42,6 +42,15 @@ export async function publishRoutes(app: FastifyInstance) {
 
     const [sf] = await db.select().from(storefront).limit(1);
     const manifest = buildManifest(input, version, sf?.config ?? null);
+
+    // Não publicar um catálogo vazio: sem pacote renderável (com capa e
+    // figurinhas) não há nada para os clientes verem — publicar viraria um
+    // "publiquei o nada" e deixaria a vitrine vazia.
+    if (manifest.packs.length === 0) {
+      return reply.code(400).send({
+        error: 'Publique ao menos um pacote (com capa e figurinhas) antes de atualizar o catálogo.',
+      });
+    }
     const body = Buffer.from(JSON.stringify(manifest, null, 2));
     const manifestKey = `catalog/v${version}.json`;
     const checksum = createHash('sha256').update(body).digest('hex');

@@ -3,6 +3,7 @@ import Foundation
 @MainActor
 final class CatalogStore: ObservableObject {
     @Published private(set) var packs: [StickerPack] = []
+    @Published private(set) var storefront: Storefront?
     @Published private(set) var isRefreshing = false
     @Published private(set) var refreshMessage: String?
     @Published private(set) var usingRemoteCatalog = false
@@ -24,6 +25,7 @@ final class CatalogStore: ObservableObject {
     private func loadBundled() {
         guard let manifest = try? loader.load() else {
             packs = []
+            storefront = nil
             return
         }
         packs = manifest.packs.map { pack in
@@ -37,6 +39,34 @@ final class CatalogStore: ObservableObject {
             }
             return cleaned
         }
+        storefront = manifest.storefront
+    }
+
+    /// Uma seção da Loja já com os pacotes resolvidos (ids ausentes ignorados).
+    struct ResolvedSection: Identifiable, Equatable {
+        let id: String
+        let title: String
+        let packs: [StickerPack]
+    }
+
+    /// Monta as seções da vitrine. Sem storefront (ex.: bundle/demo) cai num
+    /// fallback com uma seção única "Pacotes" com todos os pacotes.
+    func resolvedSections() -> [ResolvedSection] {
+        let byID = Dictionary(packs.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        guard let storefront, !storefront.sections.isEmpty else {
+            return packs.isEmpty ? [] : [ResolvedSection(id: "todos", title: "Pacotes", packs: packs)]
+        }
+        return storefront.sections.compactMap { section in
+            let resolved = section.packs.compactMap { byID[$0] }
+            return resolved.isEmpty
+                ? nil
+                : ResolvedSection(id: section.id, title: section.title, packs: resolved)
+        }
+    }
+
+    func heroPack() -> StickerPack? {
+        guard let hero = storefront?.hero else { return nil }
+        return packs.first { $0.id == hero }
     }
 
     func refresh() async {
@@ -63,6 +93,7 @@ final class CatalogStore: ObservableObject {
     private func apply(_ snapshot: RemoteCatalogSnapshot) {
         remoteSnapshot = snapshot
         usingRemoteCatalog = true
+        storefront = snapshot.manifest.storefront
         // Só troca o catálogo quando o conteúdo muda de fato: evita recarregar a
         // lista inteira (e o cascade de StoreKit) a cada atualização sem novidade.
         if packs != snapshot.manifest.packs {

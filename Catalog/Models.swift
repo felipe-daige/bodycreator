@@ -2,7 +2,19 @@ import Foundation
 
 struct StickerManifest: Codable, Equatable {
     let version: Int
+    var storefront: Storefront?
     var packs: [StickerPack]
+}
+
+struct Storefront: Codable, Equatable, Hashable {
+    let hero: String?
+    let sections: [StorefrontSection]
+}
+
+struct StorefrontSection: Codable, Equatable, Hashable, Identifiable {
+    let id: String
+    let title: String
+    let packs: [String]
 }
 
 struct StickerPack: Codable, Equatable, Hashable, Identifiable {

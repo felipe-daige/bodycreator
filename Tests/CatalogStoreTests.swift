@@ -45,6 +45,32 @@ final class CatalogStoreTests: XCTestCase {
         XCTAssertEqual(result.map(\.id), ["seta-1", "coracao-1"])
     }
 
+    func testResolvedSectionsFallbackWithoutStorefront() throws {
+        let dir = try TestFixtures.makeContentDir()
+        try TestFixtures.writeManifest(TestFixtures.sampleManifestJSON, in: dir)
+        try TestFixtures.writeSticker(named: "pack-a/seta-1.png", in: dir)
+        try TestFixtures.writeSticker(named: "pack-a/coracao-1.png", in: dir)
+        let store = CatalogStore(loader: ManifestLoader(contentURL: dir))
+        let sections = store.resolvedSections()
+        XCTAssertEqual(sections.map(\.id), ["todos"])
+        XCTAssertEqual(sections.first?.title, "Pacotes")
+        XCTAssertEqual(sections.first?.packs.map(\.id), ["pack-a"])
+        XCTAssertNil(store.heroPack())
+    }
+
+    func testStorefrontResolvesAndIgnoresMissingIDs() throws {
+        let dir = try TestFixtures.makeContentDir()
+        try TestFixtures.writeManifest(TestFixtures.sampleManifestWithStorefrontJSON, in: dir)
+        try TestFixtures.writeSticker(named: "pack-a/seta-1.png", in: dir)
+        try TestFixtures.writeSticker(named: "pack-b/seta-2.png", in: dir)
+        let store = CatalogStore(loader: ManifestLoader(contentURL: dir))
+        XCTAssertEqual(store.heroPack()?.id, "pack-a")
+        // "vazia" some (só tinha fantasma); "novidades" fica só com pack-b.
+        let sections = store.resolvedSections()
+        XCTAssertEqual(sections.map(\.id), ["novidades"])
+        XCTAssertEqual(sections.first?.packs.map(\.id), ["pack-b"])
+    }
+
     func testImageAndCoverURLs() throws {
         let dir = try TestFixtures.makeContentDir()
         try TestFixtures.writeManifest(TestFixtures.sampleManifestJSON, in: dir)

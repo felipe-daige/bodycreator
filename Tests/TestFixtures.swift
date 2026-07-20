@@ -25,6 +25,28 @@ enum TestFixtures {
     }
     """
 
+    static let sampleManifestWithStorefrontJSON = """
+    {
+      "version": 2,
+      "storefront": {
+        "hero": "pack-a",
+        "sections": [
+          { "id": "novidades", "title": "Novidades", "packs": ["pack-b", "fantasma"] },
+          { "id": "vazia", "title": "Vazia", "packs": ["fantasma"] }
+        ]
+      },
+      "packs": [
+        { "id": "pack-a", "name": "Pacote A", "cover": "pack-a/cover.png", "free": true,
+          "categories": [ { "id": "c", "name": "C", "stickers": [
+            { "id": "seta-1", "name": "S", "tags": [], "file": "pack-a/seta-1.png" } ] } ] },
+        { "id": "pack-b", "name": "Pacote B", "cover": "pack-b/cover.png", "free": false,
+          "productId": "com.daige.bodycreator.pack.pack-b",
+          "categories": [ { "id": "c2", "name": "C2", "stickers": [
+            { "id": "seta-2", "name": "S2", "tags": [], "file": "pack-b/seta-2.png" } ] } ] }
+      ]
+    }
+    """
+
     static func makeContentDir() throws -> URL {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("FigurinhasTests-\(UUID().uuidString)", isDirectory: true)

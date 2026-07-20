@@ -2,6 +2,7 @@ import {
   pgTable, text, timestamp, integer, boolean, jsonb, uuid, pgEnum, uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import type { StorefrontConfig } from '../content/manifest.js';
 
 export const roleEnum = pgEnum('role', ['admin', 'gerente']);
 export const userStatusEnum = pgEnum('user_status', ['invited', 'active', 'disabled']);
@@ -92,6 +93,17 @@ export const catalogVersions = pgTable('catalog_versions', {
 }, (t) => [
   uniqueIndex('catalog_only_one_current').on(t.isCurrent).where(sql`${t.isCurrent} = true`),
 ]);
+
+// Vitrine da Loja: rascunho único (singleton id=1) que o publish fotografa no
+// manifesto. Guardar como jsonb mantém a edição atômica e reusa o fluxo de
+// publicação existente, sem novas tabelas relacionais.
+export const storefront = pgTable('storefront', {
+  id: integer('id').primaryKey().default(1),
+  config: jsonb('config').$type<StorefrontConfig>().notNull()
+    .default({ hero: null, sections: [] }),
+  updatedBy: uuid('updated_by').references(() => users.id),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
 
 export const auditLog = pgTable('audit_log', {
   id: uuid('id').primaryKey().defaultRandom(),

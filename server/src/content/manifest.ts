@@ -1,3 +1,8 @@
+export type StorefrontConfig = {
+  hero: string | null;
+  sections: Array<{ id: string; title: string; packs: string[] }>;
+};
+
 export type ManifestInput = {
   packs: Array<{
     slug: string;

@@ -27,7 +27,7 @@ export function withTestDb() {
   // um teste nunca enxerga o que o anterior escreveu.
   afterEach(async () => {
     await db.execute(sql`
-      TRUNCATE audit_log, catalog_versions, stickers, categories, packs, invites, users
+      TRUNCATE audit_log, catalog_versions, stickers, categories, packs, storefront, invites, users
       RESTART IDENTITY CASCADE
     `);
   });

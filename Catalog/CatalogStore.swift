@@ -76,8 +76,16 @@ final class CatalogStore: ObservableObject {
         defer { isRefreshing = false }
         do {
             let snapshot = try await remote.refresh()
-            apply(snapshot)
-            flashSuccess()
+            if snapshot.manifest.packs.isEmpty {
+                // Catálogo publicado sem pacotes (estado degenerado/legado):
+                // mantém o conteúdo embutido em vez de esvaziar a loja. O servidor
+                // já recusa publicar catálogo vazio, mas manifestos antigos podem
+                // existir — nunca deixar a biblioteca ficar 100% vazia sem querer.
+                refreshMessage = nil
+            } else {
+                apply(snapshot)
+                flashSuccess()
+            }
         } catch RemoteCatalogError.notPublished {
             // Nenhum catálogo publicado ainda: estado benigno. O conteúdo local
             // continua ativo e o usuário comum não vê aviso técnico algum.

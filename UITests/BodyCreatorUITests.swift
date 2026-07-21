@@ -15,13 +15,12 @@ final class BodyCreatorUITests: XCTestCase {
 
         XCTAssertTrue(app.navigationBars["Pacotes"].waitForExistence(timeout: 5))
 
-        let examplePack = app.descendants(matching: .any)["pack-exemplo"]
-        XCTAssertTrue(examplePack.waitForExistence(timeout: 5))
-        examplePack.tap()
+        let pack = app.descendants(matching: .any)["pack-estetica-saude"]
+        XCTAssertTrue(pack.waitForExistence(timeout: 5))
+        pack.tap()
 
-        XCTAssertTrue(app.navigationBars["Pacote de Exemplo"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["sticker-seta-reta"].waitForExistence(timeout: 5))
-        app.buttons["sticker-seta-reta"].tap()
+        XCTAssertTrue(app.buttons["sticker-es-seta-reta"].waitForExistence(timeout: 5))
+        app.buttons["sticker-es-seta-reta"].tap()
 
         XCTAssertTrue(app.buttons["take-photo"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["pick-from-gallery"].exists)
@@ -49,7 +48,7 @@ final class BodyCreatorUITests: XCTestCase {
         app.tabBars.buttons["Favoritos"].tap()
 
         XCTAssertTrue(app.navigationBars["Favoritos"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["favorite-sticker-seta-reta"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["favorite-sticker-es-seta-reta"].waitForExistence(timeout: 5))
 
         let favoritesScreenshot = XCTAttachment(screenshot: app.screenshot())
         favoritesScreenshot.name = "Grade de favoritos"
@@ -57,7 +56,7 @@ final class BodyCreatorUITests: XCTestCase {
         add(favoritesScreenshot)
 
         // As duas origens de foto também estão acessíveis a partir dos favoritos.
-        app.buttons["favorite-sticker-seta-reta"].tap()
+        app.buttons["favorite-sticker-es-seta-reta"].tap()
         XCTAssertTrue(app.buttons["take-photo"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.buttons["pick-from-gallery"].exists)
     }
@@ -88,7 +87,7 @@ final class BodyCreatorUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Loja"].waitForExistence(timeout: 5))
 
         // Pacote grátis do bundle aparece como card na seção "Pacotes".
-        let card = app.descendants(matching: .any)["store-pack-exemplo"]
+        let card = app.descendants(matching: .any)["store-pack-estetica-saude"]
         XCTAssertTrue(card.waitForExistence(timeout: 5))
         card.tap()
 

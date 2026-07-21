@@ -2,6 +2,54 @@
   "version": 1,
   "packs": [
     {
+      "id": "estetica-saude",
+      "name": "Estética & Saúde · Essencial",
+      "description": "Marcações, selos e frases essenciais para divulgar procedimentos e resultados nos Stories.",
+      "cover": "packs/estetica-saude/cover.png",
+      "free": true,
+      "categories": [
+        {
+          "id": "es-setas",
+          "name": "Setas e marcações",
+          "stickers": [
+            { "id": "es-seta-reta", "name": "Seta reta", "tags": ["seta", "apontar", "marcação"], "file": "packs/estetica-saude/seta-reta.png" },
+            { "id": "es-seta-curva", "name": "Seta curva", "tags": ["seta", "curva", "apontar"], "file": "packs/estetica-saude/seta-curva.png" },
+            { "id": "es-seta-dupla", "name": "Seta dupla", "tags": ["seta", "comparação", "antes depois"], "file": "packs/estetica-saude/seta-dupla.png" },
+            { "id": "es-circulo", "name": "Círculo de destaque", "tags": ["círculo", "marcar", "área"], "file": "packs/estetica-saude/circulo.png" },
+            { "id": "es-circulo-tracejado", "name": "Círculo tracejado", "tags": ["círculo", "tracejado", "destaque"], "file": "packs/estetica-saude/circulo-tracejado.png" }
+          ]
+        },
+        {
+          "id": "es-antesdepois",
+          "name": "Antes e depois",
+          "stickers": [
+            { "id": "es-antes", "name": "Antes", "tags": ["antes", "comparação"], "file": "packs/estetica-saude/antes.png" },
+            { "id": "es-depois", "name": "Depois", "tags": ["depois", "comparação", "resultado"], "file": "packs/estetica-saude/depois.png" }
+          ]
+        },
+        {
+          "id": "es-frases",
+          "name": "Frases e CTA",
+          "stickers": [
+            { "id": "es-resultado", "name": "Resultado", "tags": ["resultado", "frase"], "file": "packs/estetica-saude/resultado.png" },
+            { "id": "es-novidade", "name": "Novidade", "tags": ["novidade", "lançamento"], "file": "packs/estetica-saude/novidade.png" },
+            { "id": "es-agende", "name": "Agende sua avaliação", "tags": ["agende", "avaliação", "cta", "marcar"], "file": "packs/estetica-saude/agende.png" },
+            { "id": "es-antes-depois", "name": "Antes & Depois", "tags": ["antes", "depois", "comparação"], "file": "packs/estetica-saude/antes-depois.png" }
+          ]
+        },
+        {
+          "id": "es-selos",
+          "name": "Selos",
+          "stickers": [
+            { "id": "es-aprovado", "name": "Aprovado", "tags": ["aprovado", "selo", "qualidade"], "file": "packs/estetica-saude/aprovado.png" },
+            { "id": "es-coracao", "name": "Coração", "tags": ["coração", "amei", "curtir"], "file": "packs/estetica-saude/coracao.png" },
+            { "id": "es-brilho", "name": "Brilho", "tags": ["brilho", "destaque", "novo"], "file": "packs/estetica-saude/brilho.png" },
+            { "id": "es-estrela", "name": "Estrela", "tags": ["estrela", "avaliação", "cinco estrelas"], "file": "packs/estetica-saude/estrela.png" }
+          ]
+        }
+      ]
+    },
+    {
       "id": "exemplo",
       "name": "Pacote de Exemplo",
       "description": "Marcações e frases essenciais para experimentar o Body Creator.",

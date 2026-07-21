@@ -71,6 +71,27 @@ final class CatalogStoreTests: XCTestCase {
         XCTAssertEqual(sections.first?.packs.map(\.id), ["pack-b"])
     }
 
+    func testEmptyCachedSnapshotKeepsBundledContent() throws {
+        let dir = try TestFixtures.makeContentDir()
+        try TestFixtures.writeManifest(TestFixtures.sampleManifestJSON, in: dir)
+        try TestFixtures.writeSticker(named: "pack-a/seta-1.png", in: dir)
+        try TestFixtures.writeSticker(named: "pack-a/coracao-1.png", in: dir)
+
+        // Cache remoto com manifesto VAZIO (0 pacotes) — como a v4 publicada na VPS.
+        // O app não pode aplicá-lo por cima do bundle e esvaziar a loja.
+        let cacheDir = try TestFixtures.makeContentDir()
+        let emptySnapshot = #"{"manifest":{"version":9,"packs":[]},"assetBaseURL":"https://example.com"}"#
+        try emptySnapshot.data(using: .utf8)!
+            .write(to: cacheDir.appendingPathComponent("snapshot.json"))
+        let remote = RemoteCatalogRepository(
+            pointerURL: URL(string: "https://example.com/catalog/current")!,
+            cacheDirectory: cacheDir,
+            session: .shared
+        )
+        let store = CatalogStore(loader: ManifestLoader(contentURL: dir), remote: remote)
+        XCTAssertEqual(store.packs.map(\.id), ["pack-a"])
+    }
+
     func testImageAndCoverURLs() throws {
         let dir = try TestFixtures.makeContentDir()
         try TestFixtures.writeManifest(TestFixtures.sampleManifestJSON, in: dir)
